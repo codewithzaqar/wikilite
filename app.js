@@ -4,15 +4,23 @@ const articleTitle = document.getElementById('articleTitle');
 const articleBody = document.getElementById('articleBody');
 const loadingIndicator = document.getElementById('loading');
 const searchInput = document.getElementById('searchInput');
+const randomBtn = document.getElementById('randomBtn');
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
     loadSidebar();
+
+    // Add Enter key listener for search
+    searchInput.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    });
+
+    // Add Random Button listener
+    randomBtn.addEventListener('click', loadRandomArticle);
 });
 
-/**
- * Loads the sidebar links using the API
- */
 async function loadSidebar() {
     try {
         const articles = await apiGetAllArticles();
@@ -22,6 +30,7 @@ async function loadSidebar() {
             const li = document.createElement('li');
             const a = document.createElement('a');
             a.textContent = article.title;
+            a.dataset.id = article.id;  // Store ID for active state tracking
             a.onclick = () => loadArticle(article.id);
             li.appendChild(a);
             navList.appendChild(li);
@@ -31,10 +40,6 @@ async function loadSidebar() {
     }
 }
 
-/**
- * Loads specific article content
- * @param {string} id 
- */
 async function loadArticle(id) {
     showLoading(true);
     try {
@@ -43,6 +48,9 @@ async function loadArticle(id) {
         // Update UI
         articleTitle.textContent = data.title;
         articleBody.innerHTML = data.content;
+
+        // Update Active State in Sidebar
+        updateActiveLink(id);
     } catch (error) {
         articleTitle.textContent = "Error";
         articleBody.textContent = "Could not find the requested article.";
@@ -51,9 +59,33 @@ async function loadArticle(id) {
     }
 }
 
-/**
- * Handles Search Functionality
- */
+// NEW: Load Random Article
+async function loadRandomArticle() {
+    showLoading(true);
+    try {
+        const data = await apiGetRandomArticle();
+        articleTitle.textContent = data.title;
+        articleBody.innerHTML = data.content;
+        updateActiveLink(data.id);
+    } catch (error) {
+        console.error(error);
+    } finally {
+        showLoading(false);
+    }
+}
+
+// NEW: Highlight current link
+function updateActiveLink(id) {
+    const links = navList.querySelectorAll('a');
+    links.forEach(link => {
+        if (link.dataset.id === id) {
+            link.classList.add('active');
+        } else {
+            link.classList.remove('active');
+        }
+    });
+}
+
 function handleSearch() {
     const query = searchInput.value.toLowerCase().trim();
     if (!query) return;
@@ -72,7 +104,6 @@ function handleSearch() {
     }
 }
 
-// Helper to toggle loading state
 function showLoading(isLoading) {
     if (isLoading) {
         loadingIndicator.classList.remove('hidden');

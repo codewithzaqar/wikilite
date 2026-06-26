@@ -1,6 +1,5 @@
 /**
  * WikiLite Mock Database
- * Simulates a backend server response
  */
 const mockDatabase = [
     {
@@ -25,24 +24,14 @@ const mockDatabase = [
     }
 ];
 
-/**
- * Simulates fetching all article titles for the sidebar
- * @returns {Promise<Array>} List of articles
- */
 async function apiGetAllArticles() {
     return new Promise((resolve) => {
-        // Simulate network delay
         setTimeout(() => {
             resolve(mockDatabase.map(item => ({ id: item.id, title: item.title })));
         }, 300);
     });
 }
 
-/**
- * Simulates fetching a specific article by ID
- * @param {string} id - The article identifier
- * @returns {Promise<Object>} The article object
- */
 async function apiGetArticleById(id) {
     return new Promise((resolve, reject) => {
         setTimeout(() => {
@@ -53,5 +42,15 @@ async function apiGetArticleById(id) {
                 reject("Article not found");
             }
         }, 200); // Fast response
+    });
+}
+
+// NEW: Get a random article
+async function apiGetRandomArticle() {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            const randomIndex = Math.floor(Math.random() * mockDatabase.length);
+            resolve(mockDatabase[randomIndex]);
+        }, 150);
     });
 }
