@@ -47,8 +47,7 @@ body { font-family: sans-serif; background-color: #f6f6f6; color: #333; height: 
 /* Sidebar Tools */
 .sidebar-tools { margin-top: 20px; }
 .tool-btn {
-    width: 100%;
-    padding: 8px;
+    width: 100%; padding: 8px;
     background: #fff;
     border: 1px solid #ccc;
     cursor: pointer;
@@ -87,24 +86,41 @@ body { font-family: sans-serif; background-color: #f6f6f6; color: #333; height: 
     border-radius: 3px;
     font-size: 0.8rem;
 }
-.nav-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
+.nav-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* Typography */
-h1 { font-family: 'Linux Libertine', 'Georgia', serif; border-bottom: 1px solid #aaa; padding-bottom: 5px; margin-bottom: 15px; }
-.wiki-text { line-height: 1.6; font-size: 1rem; }
-
-/* Internal Wiki Links */
-.wiki-link {
-    color: #0645ad;
-    text-decoration: none;
+/* Header & Edit Button */
+.article-header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #aaa; padding-bottom: 5px; margin-bottom: 15px; }
+h1 { font-family: 'Linux Libertine', 'Georgia', serif; margin: 0; } 
+.edit-btn {
+    background: none;
+    border: 1px solid #ccc;
+    padding: 4px 10px;
     cursor: pointer;
+    font-size: 0.8rem; border-radius: 3px;
 }
-.wiki-link:hover {
-    text-decoration: underline;
-}
+.edit-btn:hover { background-color: #f0f0f0; }
 
-.hidden { display: none; }
+/* Editor Styles */
+#editorContainer { margin-top: 10px; }
+#editorTexterea {
+    width: 100%;
+    height: 300px;
+    padding: 10px;
+    font-family: monospace;
+    border: 1px solid #ccc;
+    resize: vertical;
+}
+.editor-actions { margin-top: 10px; display: flex; gap: 10px; }
+.primary-btn { background-color: #3366cc; color: white; border: none; padding: 8px 16px; cursor: pointer; border-radius: 3px; }
+.primary-btn:hover { background-color: #254a9e; }
+.secondary-btn { background-color: #f0f0f0; border: 1px solid #ccc; padding: 8px 16px; cursor: pointer; border-radius: 3px; }
+.secondary-btn:hover { background-color: #e0e0e0; }
+
+/* Typography & Links  */
+.wiki-text { line-height: 1.6; font-size: 1rem; }
+.wiki-link { color: #0645ad; text-decoration: none; cursor: pointer; }
+.wiki-link:hover { text-decoration: underline }
+.wiki-link.red-link { color: #ba0000; }
+
+.hidden { display: none !important; }
 #loading { color: #666; font-style: italic; margin-top: 10px; }

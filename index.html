@@ -21,10 +21,7 @@
 		<!-- Sidebar Navigation -->
 		<aside class="sidebar">
 			<h3>Navigation</h3>
-			<ul id="navList">
-				<!-- Links will be injected here by JS -->
-			</ul>
-
+			<ul id="navList"></ul>
 			<div class="sidebar-tools">
 				<hr>
 				<button id="randomBtn" class="tool-btn">Random Article</button>
@@ -33,16 +30,30 @@
 
 		<!-- Main Content Area -->
 		<main class="content">
-			<!-- New: Breadcrumb/History Bar -->
 			<div class="article-nav">
 				<button id="backBtn" class="nav-btn" disabled>← Back</button>
 				<span id="breadcrumb">Home</span>
 			</div>
 
-			<h1 id="articleTitle">Welcome</h1>
+			<div class="article-header">
+				<h1 id="articleTitle">Welcome</h1>
+				<button id="editBtn" class="edit-btn hidden">Edit</button>
+			</div>
+
+			<!-- View Mode -->
 			<div id="articleBody" class="wiki-text">
 				Select an article from the sidebar or search to begin.
 			</div>
+
+			<!-- Edit/Create Mode Form -->
+			<div id="editorContainer" class="hidden">
+				<textarea id="editorTextarea" placeholder="Enter content here... Use [[id]] for links."></textarea>
+				<div class="editor-actions">
+					<button id="saveBtn" class="primary-btn">Save Page</button>
+					<button id="cancelBtn" class="secondary-btn">Cancel</button>
+				</div>
+			</div>
+
 			<div id="loading" class="hidden">Loading data...</div>
 		</main>
 	</div>

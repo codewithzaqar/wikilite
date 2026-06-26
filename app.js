@@ -7,31 +7,43 @@ const searchInput = document.getElementById('searchInput');
 const randomBtn = document.getElementById('randomBtn');
 const backBtn = document.getElementById('backBtn');
 const breadcrumb = document.getElementById('breadcrumb');
+const editBtn = document.getElementById('editBtn');
+const editorContainer = document.getElementById('editorContainer');
+const editorTextarea = document.getElementById('editorTextarea');
+const saveBtn = document.getElementById('saveBtn');
+const cancelBtn = document.getElementById('cancelBtn');
 
 // State Management
-let historyStack = []; // Stores IDs of visited articles
+let historyStack = [];
 let currentId = null;
+let isEditMode = false;
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
     loadSidebar();
     
-    // Search Enter key
-    searchInput.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') handleSearch();
-    });
-
-    // Random Button
+    searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSearch(); });
     randomBtn.addEventListener('click', loadRandomArticle);
-
-    // Back Button
     backBtn.addEventListener('click', goBack);
+    
+    // Edit Mode Listeners
+    editBtn.addEventListener('click', enableEditMode);
+    cancelBtn.addEventListener('click', disableEditMode);
+    saveBtn.addEventListener('click', saveArticle);
 
     // Event Delegation for Internal Links
     articleBody.addEventListener('click', (e) => {
         if (e.target.classList.contains('wiki-link')) {
             const id = e.target.dataset.id;
-            loadArticle(id);
+            // If it's a red link, prompt to create
+            if (e.target.classList.contains('red-link')) {
+                const confirmCreate = confirm(`Article "${id}" does not exist. Would you like to create it?`);
+                if (confirmCreate) {
+                    startCreateArticle(id);
+                }
+            } else {
+                loadArticle(id);
+            }
         }
     });
 });
@@ -40,7 +52,6 @@ async function loadSidebar() {
     try {
         const articles = await apiGetAllArticles();
         navList.innerHTML = ''; 
-        
         articles.forEach(article => {
             const li = document.createElement('li');
             const a = document.createElement('a');
@@ -50,38 +61,117 @@ async function loadSidebar() {
             li.appendChild(a);
             navList.appendChild(li);
         });
-    } catch (error) {
-        console.error("Failed to load sidebar:", error);
-    }
+    } catch (error) { console.error("Sidebar error:", error); }
 }
 
 async function loadArticle(id) {
-    // Prevent reloading same article
-    if (currentId === id && historyStack.length > 0) return;
+    if (currentId === id && !isEditMode && historyStack.length > 0) return;
 
     showLoading(true);
+    disableEditMode(); // Ensure we are in view mode
+
     try {
         const data = await apiGetArticleById(id);
         
-        // Update History
-        if (currentId) {
-            historyStack.push(currentId);
-        }
+        if (currentId) historyStack.push(currentId);
         currentId = id;
         updateNavUI();
 
-        // Parse Content for Internal Links
         const parsedContent = parseWikiLinks(data.content);
 
-        // Update UI
         articleTitle.textContent = data.title;
         articleBody.innerHTML = parsedContent;
         breadcrumb.textContent = `Wiki / ${data.title}`;
         
+        editBtn.classList.remove('hidden'); // Show edit button
         updateActiveLink(id);
     } catch (error) {
+        // This block might be hit if direct ID load fails, but usually handled by red links
         articleTitle.textContent = "Error";
         articleBody.textContent = "Could not find the requested article.";
+        editBtn.classList.add('hidden');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// NEW: Start Create Process
+function startCreateArticle(id) {
+    currentId = id.toLowerCase();
+    if (historyStack.length === 0 || historyStack[historyStack.length-1] !== currentId) {
+         // Don't push if we are already creating this one
+    }
+    
+    articleTitle.textContent = `Create: ${currentId}`;
+    breadcrumb.textContent = `Wiki / Create New`;
+    editBtn.classList.add('hidden');
+    
+    enableEditMode(true); // true = isNew
+}
+
+// NEW: Enable Edit Mode
+function enableEditMode(isNew = false) {
+    isEditMode = true;
+    articleBody.classList.add('hidden');
+    editorContainer.classList.remove('hidden');
+    
+    if (isNew) {
+        editorTextarea.value = "";
+        saveBtn.textContent = "Create Page";
+    } else {
+        // Get raw content from DB (simplified for mock)
+        // In a real app, we'd store raw markdown separately from HTML
+        // Here we just strip tags for demo or use a stored raw version. 
+        // For this mock, let's just put a placeholder or try to reverse parse (hard).
+        // To keep it simple: we will just let them overwrite.
+        editorTextarea.value = "Edit content here... (Use [[id]] for links)";
+        saveBtn.textContent = "Save Page";
+    }
+}
+
+function disableEditMode() {
+    isEditMode = false;
+    articleBody.classList.remove('hidden');
+    editorContainer.classList.add('hidden');
+}
+
+// NEW: Save Article
+async function saveArticle() {
+    const content = editorTextarea.value;
+    if (!content.trim()) {
+        alert("Content cannot be empty");
+        return;
+    }
+
+    showLoading(true);
+    try {
+        // Check if article exists in DB to decide Create vs Update
+        const exists = mockDatabase.find(i => i.id === currentId);
+        
+        let savedData;
+        if (exists) {
+            savedData = await apiUpdateArticle(currentId, content);
+        } else {
+            // Generate Title from ID for simplicity
+            const title = currentId.charAt(0).toUpperCase() + currentId.slice(1);
+            savedData = await apiCreateArticle(currentId, title, content);
+        }
+
+        // Reload sidebar to show new article
+        await loadSidebar();
+        
+        // Render the new/updated article
+        const parsedContent = parseWikiLinks(savedData.content);
+        articleTitle.textContent = savedData.title;
+        articleBody.innerHTML = parsedContent;
+        breadcrumb.textContent = `Wiki / ${savedData.title}`;
+        
+        disableEditMode();
+        editBtn.classList.remove('hidden');
+        updateActiveLink(currentId);
+        
+    } catch (error) {
+        alert("Failed to save: " + error);
     } finally {
         showLoading(false);
     }
@@ -89,41 +179,35 @@ async function loadArticle(id) {
 
 async function loadRandomArticle() {
     showLoading(true);
+    disableEditMode();
     try {
         const data = await apiGetRandomArticle();
-        
         if (currentId) historyStack.push(currentId);
         currentId = data.id;
         updateNavUI();
-
         const parsedContent = parseWikiLinks(data.content);
         articleTitle.textContent = data.title;
         articleBody.innerHTML = parsedContent;
         breadcrumb.textContent = `Wiki / ${data.title}`;
+        editBtn.classList.remove('hidden');
         updateActiveLink(data.id);
-    } catch (error) {
-        console.error(error);
-    } finally {
-        showLoading(false);
-    }
+    } catch (error) { console.error(error); } finally { showLoading(false); }
 }
 
-// NEW: Go Back Logic
 function goBack() {
     if (historyStack.length === 0) return;
-    
     const previousId = historyStack.pop();
-    currentId = previousId; // Set current without pushing to stack again
+    currentId = previousId;
     updateNavUI();
-    
-    // Load the article directly without adding to history again
-    // We need to fetch it again to render
     showLoading(true);
+    disableEditMode();
+    
     apiGetArticleById(previousId).then(data => {
         const parsedContent = parseWikiLinks(data.content);
         articleTitle.textContent = data.title;
         articleBody.innerHTML = parsedContent;
         breadcrumb.textContent = `Wiki / ${data.title}`;
+        editBtn.classList.remove('hidden');
         updateActiveLink(previousId);
     }).finally(() => showLoading(false));
 }
@@ -135,28 +219,21 @@ function updateNavUI() {
 function updateActiveLink(id) {
     const links = navList.querySelectorAll('a');
     links.forEach(link => {
-        if (link.dataset.id === id) {
-            link.classList.add('active');
-        } else {
-            link.classList.remove('active');
-        }
+        if (link.dataset.id === id) link.classList.add('active');
+        else link.classList.remove('active');
     });
 }
 
 function handleSearch() {
     const query = searchInput.value.toLowerCase().trim();
     if (!query) return;
-
-    const found = mockDatabase.find(item => 
-        item.title.toLowerCase().includes(query) || 
-        item.id.includes(query)
-    );
-
+    const found = mockDatabase.find(item => item.title.toLowerCase().includes(query) || item.id.includes(query));
     if (found) {
         loadArticle(found.id);
         searchInput.value = ''; 
     } else {
-        alert("No results found for: " + searchInput.value);
+        const confirmCreate = confirm(`No results for "${query}". Create new article?`);
+        if (confirmCreate) startCreateArticle(query);
     }
 }
 

@@ -1,6 +1,5 @@
 /**
  * WikiLite Mock Database
- * Note: Content now uses [[id]] syntax for internal links
  */
 const mockDatabase = [
     {
@@ -38,7 +37,6 @@ async function apiGetArticleById(id) {
         setTimeout(() => {
             const article = mockDatabase.find(item => item.id === id.toLowerCase());
             if (article) {
-                // Return a copy to avoid modifying original DB
                 resolve({...article});
             } else {
                 reject("Article not found");
@@ -50,21 +48,48 @@ async function apiGetArticleById(id) {
 async function apiGetRandomArticle() {
     return new Promise((resolve) => {
         setTimeout(() => {
+            if (mockDatabase.length === 0) reject("No articles");
             const randomIndex = Math.floor(Math.random() * mockDatabase.length);
             resolve(mockDatabase[randomIndex]);
         }, 150);
     });
 }
 
+// NEW: Create Article
+async function apiCreateArticle(id, title, content) {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            const newArticle = { id: id.toLowerCase(), title, content };
+            mockDatabase.push(newArticle);
+            resolve(newArticle); 
+        }, 300);
+    });
+}
+
+// NEW: Update Article
+async function apiUpdateArticle(id, content) {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            const index = mockDatabase.findIndex(item => item.id === id.toLowerCase());
+            if (index !== -1) {
+                mockDatabase[index].content = content;
+                resolve({...mockDatabase[index]});
+            } else {
+                reject("Article not found for update");
+            }
+        }, 300);
+    })
+}
+
 // NEW: Parse internal links [[id]] into clickable HTML
 function parseWikiLinks(content) {
-    // Regex to find [[id]]
     return content.replace(/\[\[(.*?)\]\]/g, (match, id) => {
-        // Find the title for the tooltip/display
         const linkedArticle = mockDatabase.find(a => a.id === id);
         const title = linkedArticle ? linkedArticle.title : id;
 
-        // Return anchor tag with a special class and data-id
-        return `<span class="wiki-link" data-id="${id}">${title}</span>`;
+        // Check if article exists to determise class
+        const className = linkedArticle ? "wiki-link" : "wiki-link red-link";
+
+        return `<span class="${className}" data-id="${id.toLowerCase()}">${title}</span>`;
     });
 }
