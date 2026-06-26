@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>WikiLite</title>
+	<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+	<!-- Header -->
+	<header class="top-bar">
+		<div class="logo">Wiki<strong>Lite</strong> <span class="version">v0.0.1a</span></div>
+		<div class="search-box">
+			<input type="text" id="searchInput" placeholder="Search Wiki...">
+			<button onclick="handleSearch()">Go</button>
+		</div>
+	</header>
+
+	<div class="container">
+		<!-- Sidebar Navigation -->
+		<aside class="sidebar">
+			<h3>Navigation</h3>
+			<ul id="navList">
+				<!-- Links will be injected here by JS -->
+			</ul>
+		</aside>
+
+		<!-- Main Content Area -->
+		<main class="content">
+			<h1 id="articleTitle">Welcome</h1>
+			<div id="articleBody" class="wiki-text">
+				Select an article from the sidebar or search to begin.
+			</div>
+			<div id="loading" class="hidden">Loading data...</div>
+		</main>
+	</div>
+
+	<!-- Scripts -->
+	<script src="api.js"></script>
+	<script src="app.js"></script>
+</body>
+</html>
