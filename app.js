@@ -1,10 +1,10 @@
 // DOM Elements
-const navList = document.getElementById('navList');
+const navList = document.getElementById('historyList'); // Changed ID
 const articleTitle = document.getElementById('articleTitle');
 const articleBody = document.getElementById('articleBody');
 const loadingIndicator = document.getElementById('loading');
 const searchInput = document.getElementById('searchInput');
-const randomBtn = document.getElementById('randomBtn');
+const randomBtn = document.querySelector('a[onclick="loadRandomArticle()"]'); // Select by attribute
 const backBtn = document.getElementById('backBtn');
 const breadcrumb = document.getElementById('breadcrumb');
 const editBtn = document.getElementById('editBtn');
@@ -14,7 +14,8 @@ const saveBtn = document.getElementById('saveBtn');
 const cancelBtn = document.getElementById('cancelBtn');
 
 // State
-let historyStack = [];
+let historyStack = []; // For Back Button
+let visitedArticles = []; // For Sidebar History
 let currentId = null; 
 let currentTitle = "";
 let isEditMode = false;
@@ -25,26 +26,18 @@ document.addEventListener('DOMContentLoaded', () => {
     loadArticle("Welcome"); 
     
     searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSearch(); });
-    randomBtn.addEventListener('click', loadRandomArticle);
     backBtn.addEventListener('click', goBack);
     editBtn.addEventListener('click', enableEditMode);
     cancelBtn.addEventListener('click', disableEditMode);
     saveBtn.addEventListener('click', saveLocalArticle);
 
-    // FIX: Intercept Internal Wikipedia Links
+    // Intercept Internal Wikipedia Links
     articleBody.addEventListener('click', (e) => {
-        // Check if clicked element is an anchor tag
         if (e.target.tagName === 'A') {
             const href = e.target.getAttribute('href');
-            
-            // Check if it's a relative Wikipedia link (starts with /wiki/)
             if (href && href.startsWith('/wiki/')) {
-                e.preventDefault(); // Stop browser from navigating
-                
-                // Extract title from URL (decode %20 etc)
+                e.preventDefault(); 
                 const wikiTitle = decodeURIComponent(href.replace('/wiki/', ''));
-                
-                // Load it within our app
                 loadArticle(wikiTitle);
             }
         }
@@ -66,7 +59,7 @@ async function loadArticle(identifier) {
         } else if (identifier === "Welcome") {
             data = { 
                 title: "Welcome to WikiLite", 
-                content: "<p>This is <b>WikiLite v0.0.1a05c</b>. It now connects to the real <a href='https://www.wikipedia.org'>Wikipedia</a> API!</p><p>Try searching for 'Quantum Physics' or click Random.</p>", 
+                content: "<p>This is <b>WikiLite v0.0.1a06</b>. It now connects to the real <a href='https://www.wikipedia.org'>Wikipedia</a> API!</p><p>Try searching for 'Quantum Physics' or click Random.</p>", 
                 isLocal: true 
             };
             isLocalArticle = true;
@@ -76,10 +69,14 @@ async function loadArticle(identifier) {
             isLocalArticle = false;
         }
 
-        // Update History
+        // Update History Stack (for Back Button)
         if (currentId && currentId !== data.id) {
             historyStack.push({ id: currentId, title: currentTitle });
         }
+        
+        // Update Visited List (for Sidebar)
+        addToVisited(data.title, data.id);
+
         currentId = data.id;
         currentTitle = data.title;
         updateNavUI();
@@ -99,12 +96,48 @@ async function loadArticle(identifier) {
     } catch (error) {
         console.error(error);
         articleTitle.textContent = "Not Found";
-        // Allow creating a local article if Wikipedia fails
         articleBody.innerHTML = `<p>Could not find "${identifier}" on Wikipedia.</p><button onclick="startCreateLocal('${identifier}')">Create Local Article</button>`;
         editBtn.classList.add('hidden');
     } finally {
         showLoading(false);
     }
+}
+
+// NEW: Manage Sidebar History
+function addToVisited(title, id) {
+    // Remove if already exists to move it to top
+    visitedArticles = visitedArticles.filter(item => item.id !== id);
+    
+    // Add to front
+    visitedArticles.unshift({ title, id });
+    
+    // Keep only last 10
+    if (visitedArticles.length > 10) visitedArticles.pop();
+    
+    renderSidebar();
+}
+
+function renderSidebar() {
+    navList.innerHTML = '';
+    if (visitedArticles.length === 0) {
+        navList.innerHTML = '<li style="color:#888; font-size:0.8rem;">No history yet...</li>';
+        return;
+    }
+
+    visitedArticles.forEach(item => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.textContent = item.title;
+        
+        // Highlight active
+        if (item.id === currentId) {
+            a.classList.add('active');
+        }
+        
+        a.onclick = () => loadArticle(item.title); // Use title for Wikipedia API
+        li.appendChild(a);
+        navList.appendChild(li);
+    });
 }
 
 async function handleSearch() {
@@ -133,9 +166,12 @@ async function loadRandomArticle() {
     try {
         const data = await apiGetRandomArticle();
         if (currentId) historyStack.push({ id: currentId, title: currentTitle });
+        
         currentId = data.id;
         currentTitle = data.title;
         isLocalArticle = false;
+        
+        addToVisited(data.title, data.id); // Update sidebar
         updateNavUI();
         
         articleTitle.textContent = data.title;
@@ -199,6 +235,7 @@ async function saveLocalArticle() {
     articleBody.innerHTML = content;
     articleTitle.textContent = currentTitle;
     breadcrumb.textContent = `Local / ${currentTitle}`;
+    addToVisited(currentTitle, currentId); // Add to sidebar
     showLoading(false);
 }
 

@@ -1,11 +1,10 @@
 /**
  * WikiLite Real Wikipedia API Connector
- * v0.0.1a05b (Patch: Fix HTML in titles)
+ * v0.0.1a06
  */
 
 const WIKI_API_URL = "https://en.wikipedia.org/w/api.php";
 
-// Helper to remove HTML tags from strings
 function stripHtmlTags(html) {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     return doc.body.textContent || "";
@@ -27,7 +26,7 @@ async function apiSearchArticles(query) {
         if (data.query && data.query.search) {
             return data.query.search.map(item => ({
                 id: item.pageid.toString(),
-                title: item.title // Search results usually come clean, but good to be safe
+                title: item.title
             }));
         }
         return [];
@@ -55,7 +54,6 @@ async function apiGetArticleByTitle(title) {
         if (data.parse) {
             return {
                 id: data.parse.pageid.toString(),
-                // FIX: Strip HTML tags from displaytitle
                 title: stripHtmlTags(data.parse.displaytitle),
                 content: data.parse.text["*"]
             };
@@ -85,7 +83,6 @@ async function apiGetRandomArticle() {
         if (data.query && data.query.pages) {
             const pageId = Object.keys(data.query.pages)[0];
             const page = data.query.pages[pageId];
-            // Fetch full content
             const articleData = await apiGetArticleByTitle(page.title);
             return articleData;
         }

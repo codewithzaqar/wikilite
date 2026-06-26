@@ -1,65 +1,75 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>WikiLite</title>
-	<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WikiLite</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-	<!-- Header -->
-	<header class="top-bar">
-		<div class="logo">Wiki<strong>Lite</strong> <span class="version">v0.0.1a</span></div>
-		<div class="search-box">
-			<input type="text" id="searchInput" placeholder="Search Wiki...">
-			<button onclick="handleSearch()">Go</button>
-		</div>
-	</header>
+    <!-- Header -->
+    <header class="top-bar">
+        <div class="logo">Wiki<strong>Lite</strong> <span class="version">v0.0.1a</span></div>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search Wikipedia...">
+            <button onclick="handleSearch()">Go</button>
+        </div>
+    </header>
 
-	<div class="container">
-		<!-- Sidebar Navigation -->
-		<aside class="sidebar">
-			<h3>Navigation</h3>
-			<ul id="navList"></ul>
-			<div class="sidebar-tools">
-				<hr>
-				<button id="randomBtn" class="tool-btn">Random Article</button>
-			</div>
-		</aside>
+    <div class="container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <h3>Main</h3>
+            <ul>
+                <li><a onclick="loadArticle('Welcome')">Main Page</a></li>
+                <li><a onclick="loadRandomArticle()">Random Article</a></li>
+            </ul>
 
-		<!-- Main Content Area -->
-		<main class="content">
-			<div class="article-nav">
-				<button id="backBtn" class="nav-btn" disabled>← Back</button>
-				<span id="breadcrumb">Home</span>
-			</div>
+            <h3>History</h3>
+            <ul id="historyList">
+                <!-- Recent visits injected here -->
+                <li style="color:#888; font-size:0.8rem;">No history yet...</li>
+            </ul>
+            
+            <div class="sidebar-tools">
+                <hr>
+                <small style="color:#888;">WikiLite connects to live Wikipedia API.</small>
+            </div>
+        </aside>
 
-			<div class="article-header">
-				<h1 id="articleTitle">Welcome</h1>
-				<button id="editBtn" class="edit-btn hidden">Edit</button>
-			</div>
+        <!-- Main Content Area -->
+        <main class="content" id="mainContent">
+            <div class="article-nav">
+                <button id="backBtn" class="nav-btn" disabled>← Back</button>
+                <span id="breadcrumb">Home</span>
+            </div>
 
-			<!-- View Mode -->
-			<div id="articleBody" class="wiki-text">
-				Select an article from the sidebar or search to begin.
-			</div>
+            <div class="article-header">
+                <h1 id="articleTitle">Welcome</h1>
+                <button id="editBtn" class="edit-btn hidden">Edit Local</button>
+            </div>
 
-			<!-- Edit/Create Mode Form -->
-			<div id="editorContainer" class="hidden">
-				<textarea id="editorTextarea" placeholder="Enter content here... Use [[id]] for links."></textarea>
-				<div class="editor-actions">
-					<button id="saveBtn" class="primary-btn">Save Page</button>
-					<button id="cancelBtn" class="secondary-btn">Cancel</button>
-				</div>
-			</div>
+            <!-- View Mode -->
+            <div id="articleBody" class="wiki-text">
+                Select an article from the sidebar or search to begin.
+            </div>
 
-			<div id="loading" class="hidden">Loading data...</div>
-		</main>
-	</div>
+            <!-- Edit/Create Mode Form -->
+            <div id="editorContainer" class="hidden">
+                <textarea id="editorTextarea" placeholder="Enter content here..."></textarea>
+                <div class="editor-actions">
+                    <button id="saveBtn" class="primary-btn">Save Page</button>
+                    <button id="cancelBtn" class="secondary-btn">Cancel</button>
+                </div>
+            </div>
 
-	<!-- Scripts -->
-	<script src="api.js"></script>
-	<script src="app.js"></script>
+            <div id="loading" class="hidden">Loading data...</div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="api.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
