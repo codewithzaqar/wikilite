@@ -64,10 +64,47 @@ body { font-family: sans-serif; background-color: #f6f6f6; color: #333; height: 
     padding: 30px;
     overflow-y: auto;
     border-left: 1px solid #a7d7f9;
+    display: flex;
+    flex-direction: column;
+}
+
+/* New: Article Navigation Bar */
+.article-nav {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    font-size: 0.85rem;
+    color: #666;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+.nav-btn {
+    background: none;
+    border: 1px solid #ccc;
+    padding: 2px 8px;
+    margin-right: 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 0.8rem;
+}
+.nav-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* Typography */
 h1 { font-family: 'Linux Libertine', 'Georgia', serif; border-bottom: 1px solid #aaa; padding-bottom: 5px; margin-bottom: 15px; }
 .wiki-text { line-height: 1.6; font-size: 1rem; }
+
+/* Internal Wiki Links */
+.wiki-link {
+    color: #0645ad;
+    text-decoration: none;
+    cursor: pointer;
+}
+.wiki-link:hover {
+    text-decoration: underline;
+}
+
 .hidden { display: none; }
 #loading { color: #666; font-style: italic; margin-top: 10px; }
