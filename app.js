@@ -13,119 +13,158 @@ const editorTextarea = document.getElementById('editorTextarea');
 const saveBtn = document.getElementById('saveBtn');
 const cancelBtn = document.getElementById('cancelBtn');
 
-// State Management
+// State
 let historyStack = [];
-let currentId = null;
+let currentId = null; // Can be PageID (real) or slug (local)
+let currentTitle = "";
 let isEditMode = false;
+let isLocalArticle = false;
 
-// Initialize App
+// Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    loadSidebar();
+    // Load initial welcome message or random
+    loadArticle("Welcome"); // Special case handled below
     
     searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSearch(); });
     randomBtn.addEventListener('click', loadRandomArticle);
     backBtn.addEventListener('click', goBack);
-    
-    // Edit Mode Listeners
     editBtn.addEventListener('click', enableEditMode);
     cancelBtn.addEventListener('click', disableEditMode);
-    saveBtn.addEventListener('click', saveArticle);
+    saveBtn.addEventListener('click', saveLocalArticle);
 
-    // Event Delegation for Internal Links
+    // Handle internal links within fetched content
     articleBody.addEventListener('click', (e) => {
-        if (e.target.classList.contains('wiki-link')) {
-            const id = e.target.dataset.id;
-            // If it's a red link, prompt to create
-            if (e.target.classList.contains('red-link')) {
-                const confirmCreate = confirm(`Article "${id}" does not exist. Would you like to create it?`);
-                if (confirmCreate) {
-                    startCreateArticle(id);
-                }
-            } else {
-                loadArticle(id);
-            }
+        if (e.target.tagName === 'A' && e.target.href.includes('wikipedia.org')) {
+            e.preventDefault();
+            const title = decodeURIComponent(e.target.href.split('/').pop());
+            loadArticle(title);
         }
     });
 });
 
-async function loadSidebar() {
-    try {
-        const articles = await apiGetAllArticles();
-        navList.innerHTML = ''; 
-        articles.forEach(article => {
-            const li = document.createElement('li');
-            const a = document.createElement('a');
-            a.textContent = article.title;
-            a.dataset.id = article.id;
-            a.onclick = () => loadArticle(article.id);
-            li.appendChild(a);
-            navList.appendChild(li);
-        });
-    } catch (error) { console.error("Sidebar error:", error); }
-}
-
-async function loadArticle(id) {
-    if (currentId === id && !isEditMode && historyStack.length > 0) return;
-
+async function loadArticle(identifier) {
     showLoading(true);
-    disableEditMode(); // Ensure we are in view mode
+    disableEditMode();
 
     try {
-        const data = await apiGetArticleById(id);
+        let data;
         
-        if (currentId) historyStack.push(currentId);
-        currentId = id;
+        const local = await apiGetLocalArticle(identifier);
+        if (local) {
+            data = local;
+            isLocalArticle = true;
+        } else if (identifier === "Welcome") {
+            data = { title: "Welcome to WikiLite", content: "<p>This is <b>WikiLite v0.0.1a05b</b>. It now connects to the real <a href='https://www.wikipedia.org'>Wikipedia</a> API!</p>", isLocal: true };
+            isLocalArticle = true;
+        } else {
+            data = await apiGetArticleByTitle(identifier);
+            isLocalArticle = false;
+        }
+
+        if (currentId && currentId !== data.id) {
+            historyStack.push({ id: currentId, title: currentTitle });
+        }
+        currentId = data.id;
+        currentTitle = data.title;
         updateNavUI();
 
-        const parsedContent = parseWikiLinks(data.content);
-
+        // FIX: Use textContent for title to prevent any residual HTML injection
         articleTitle.textContent = data.title;
-        articleBody.innerHTML = parsedContent;
-        breadcrumb.textContent = `Wiki / ${data.title}`;
         
-        editBtn.classList.remove('hidden'); // Show edit button
-        updateActiveLink(id);
+        // Use innerHTML for content because it contains formatted Wikipedia HTML
+        articleBody.innerHTML = data.content;
+        
+        breadcrumb.textContent = isLocalArticle ? `Local / ${data.title}` : `Wikipedia / ${data.title}`;
+        
+        if (isLocalArticle) {
+            editBtn.classList.remove('hidden');
+        } else {
+            editBtn.classList.add('hidden');
+        }
+
     } catch (error) {
-        // This block might be hit if direct ID load fails, but usually handled by red links
-        articleTitle.textContent = "Error";
-        articleBody.textContent = "Could not find the requested article.";
+        articleTitle.textContent = "Not Found";
+        articleBody.innerHTML = `<p>Could not find "${identifier}" on Wikipedia.</p><button onclick="startCreateLocal('${identifier}')">Create Local Article</button>`;
         editBtn.classList.add('hidden');
     } finally {
         showLoading(false);
     }
 }
 
-// NEW: Start Create Process
-function startCreateArticle(id) {
-    currentId = id.toLowerCase();
-    if (historyStack.length === 0 || historyStack[historyStack.length-1] !== currentId) {
-         // Don't push if we are already creating this one
+async function handleSearch() {
+    const query = searchInput.value.trim();
+    if (!query) return;
+
+    showLoading(true);
+    try {
+        const results = await apiSearchArticles(query);
+        if (results.length > 0) {
+            // Load the top result
+            loadArticle(results[0].title);
+        } else {
+            articleTitle.textContent = "No Results";
+            articleBody.innerHTML = `<p>No Wikipedia articles found for "${query}".</p>`;
+        }
+    } catch (error) {
+        console.error(error);
+    } finally {
+        showLoading(false);
+        searchInput.value = '';
     }
-    
-    articleTitle.textContent = `Create: ${currentId}`;
-    breadcrumb.textContent = `Wiki / Create New`;
-    editBtn.classList.add('hidden');
-    
-    enableEditMode(true); // true = isNew
 }
 
-// NEW: Enable Edit Mode
+async function loadRandomArticle() {
+    showLoading(true);
+    try {
+        const data = await apiGetRandomArticle();
+        if (currentId) historyStack.push({ id: currentId, title: currentTitle });
+        currentId = data.id;
+        currentTitle = data.title;
+        isLocalArticle = false;
+        updateNavUI();
+        
+        articleTitle.textContent = data.title;
+        articleBody.innerHTML = data.content;
+        breadcrumb.textContent = `Wikipedia / ${data.title}`;
+        editBtn.classList.add('hidden');
+    } catch (error) {
+        alert("Failed to load random article");
+    } finally {
+        showLoading(false);
+    }
+}
+
+function goBack() {
+    if (historyStack.length === 0) return;
+    const prev = historyStack.pop();
+    currentId = prev.id;
+    currentTitle = prev.title;
+    updateNavUI();
+    loadArticle(prev.title); // Reload
+}
+
+// Local Edit/Create Functions
+function startCreateLocal(title) {
+    isLocalArticle = true;
+    currentId = title.toLowerCase().replace(/\s+/g, '_');
+    currentTitle = title;
+    enableEditMode(true);
+}
+
 function enableEditMode(isNew = false) {
+    if (!isLocalArticle) return; // Safety check
     isEditMode = true;
     articleBody.classList.add('hidden');
     editorContainer.classList.remove('hidden');
+    editBtn.classList.add('hidden');
     
     if (isNew) {
         editorTextarea.value = "";
-        saveBtn.textContent = "Create Page";
+        saveBtn.textContent = "Create Local Page";
     } else {
-        // Get raw content from DB (simplified for mock)
-        // In a real app, we'd store raw markdown separately from HTML
-        // Here we just strip tags for demo or use a stored raw version. 
-        // For this mock, let's just put a placeholder or try to reverse parse (hard).
-        // To keep it simple: we will just let them overwrite.
-        editorTextarea.value = "Edit content here... (Use [[id]] for links)";
-        saveBtn.textContent = "Save Page";
+        // Strip HTML tags for editing (simple version)
+        editorTextarea.value = articleBody.innerText; 
+        saveBtn.textContent = "Save Local Changes";
     }
 }
 
@@ -133,108 +172,24 @@ function disableEditMode() {
     isEditMode = false;
     articleBody.classList.remove('hidden');
     editorContainer.classList.add('hidden');
+    if (isLocalArticle) editBtn.classList.remove('hidden');
 }
 
-// NEW: Save Article
-async function saveArticle() {
-    const content = editorTextarea.value;
-    if (!content.trim()) {
-        alert("Content cannot be empty");
-        return;
-    }
-
+async function saveLocalArticle() {
+    const content = `<p>${editorTextarea.value.replace(/\n/g, '<br>')}</p>`; // Simple formatting
     showLoading(true);
-    try {
-        // Check if article exists in DB to decide Create vs Update
-        const exists = mockDatabase.find(i => i.id === currentId);
-        
-        let savedData;
-        if (exists) {
-            savedData = await apiUpdateArticle(currentId, content);
-        } else {
-            // Generate Title from ID for simplicity
-            const title = currentId.charAt(0).toUpperCase() + currentId.slice(1);
-            savedData = await apiCreateArticle(currentId, title, content);
-        }
-
-        // Reload sidebar to show new article
-        await loadSidebar();
-        
-        // Render the new/updated article
-        const parsedContent = parseWikiLinks(savedData.content);
-        articleTitle.textContent = savedData.title;
-        articleBody.innerHTML = parsedContent;
-        breadcrumb.textContent = `Wiki / ${savedData.title}`;
-        
-        disableEditMode();
-        editBtn.classList.remove('hidden');
-        updateActiveLink(currentId);
-        
-    } catch (error) {
-        alert("Failed to save: " + error);
-    } finally {
-        showLoading(false);
-    }
-}
-
-async function loadRandomArticle() {
-    showLoading(true);
-    disableEditMode();
-    try {
-        const data = await apiGetRandomArticle();
-        if (currentId) historyStack.push(currentId);
-        currentId = data.id;
-        updateNavUI();
-        const parsedContent = parseWikiLinks(data.content);
-        articleTitle.textContent = data.title;
-        articleBody.innerHTML = parsedContent;
-        breadcrumb.textContent = `Wiki / ${data.title}`;
-        editBtn.classList.remove('hidden');
-        updateActiveLink(data.id);
-    } catch (error) { console.error(error); } finally { showLoading(false); }
-}
-
-function goBack() {
-    if (historyStack.length === 0) return;
-    const previousId = historyStack.pop();
-    currentId = previousId;
-    updateNavUI();
-    showLoading(true);
-    disableEditMode();
     
-    apiGetArticleById(previousId).then(data => {
-        const parsedContent = parseWikiLinks(data.content);
-        articleTitle.textContent = data.title;
-        articleBody.innerHTML = parsedContent;
-        breadcrumb.textContent = `Wiki / ${data.title}`;
-        editBtn.classList.remove('hidden');
-        updateActiveLink(previousId);
-    }).finally(() => showLoading(false));
+    await apiCreateLocalArticle(currentId, currentTitle, content);
+    
+    disableEditMode();
+    articleBody.innerHTML = content;
+    articleTitle.textContent = currentTitle;
+    breadcrumb.textContent = `Local / ${currentTitle}`;
+    showLoading(false);
 }
 
 function updateNavUI() {
     backBtn.disabled = historyStack.length === 0;
-}
-
-function updateActiveLink(id) {
-    const links = navList.querySelectorAll('a');
-    links.forEach(link => {
-        if (link.dataset.id === id) link.classList.add('active');
-        else link.classList.remove('active');
-    });
-}
-
-function handleSearch() {
-    const query = searchInput.value.toLowerCase().trim();
-    if (!query) return;
-    const found = mockDatabase.find(item => item.title.toLowerCase().includes(query) || item.id.includes(query));
-    if (found) {
-        loadArticle(found.id);
-        searchInput.value = ''; 
-    } else {
-        const confirmCreate = confirm(`No results for "${query}". Create new article?`);
-        if (confirmCreate) startCreateArticle(query);
-    }
 }
 
 function showLoading(isLoading) {
