@@ -15,15 +15,14 @@ const cancelBtn = document.getElementById('cancelBtn');
 
 // State
 let historyStack = [];
-let currentId = null; // Can be PageID (real) or slug (local)
+let currentId = null; 
 let currentTitle = "";
 let isEditMode = false;
 let isLocalArticle = false;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    // Load initial welcome message or random
-    loadArticle("Welcome"); // Special case handled below
+    loadArticle("Welcome"); 
     
     searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSearch(); });
     randomBtn.addEventListener('click', loadRandomArticle);
@@ -32,12 +31,22 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelBtn.addEventListener('click', disableEditMode);
     saveBtn.addEventListener('click', saveLocalArticle);
 
-    // Handle internal links within fetched content
+    // FIX: Intercept Internal Wikipedia Links
     articleBody.addEventListener('click', (e) => {
-        if (e.target.tagName === 'A' && e.target.href.includes('wikipedia.org')) {
-            e.preventDefault();
-            const title = decodeURIComponent(e.target.href.split('/').pop());
-            loadArticle(title);
+        // Check if clicked element is an anchor tag
+        if (e.target.tagName === 'A') {
+            const href = e.target.getAttribute('href');
+            
+            // Check if it's a relative Wikipedia link (starts with /wiki/)
+            if (href && href.startsWith('/wiki/')) {
+                e.preventDefault(); // Stop browser from navigating
+                
+                // Extract title from URL (decode %20 etc)
+                const wikiTitle = decodeURIComponent(href.replace('/wiki/', ''));
+                
+                // Load it within our app
+                loadArticle(wikiTitle);
+            }
         }
     });
 });
@@ -49,18 +58,25 @@ async function loadArticle(identifier) {
     try {
         let data;
         
+        // Check Local First
         const local = await apiGetLocalArticle(identifier);
         if (local) {
             data = local;
             isLocalArticle = true;
         } else if (identifier === "Welcome") {
-            data = { title: "Welcome to WikiLite", content: "<p>This is <b>WikiLite v0.0.1a05b</b>. It now connects to the real <a href='https://www.wikipedia.org'>Wikipedia</a> API!</p>", isLocal: true };
+            data = { 
+                title: "Welcome to WikiLite", 
+                content: "<p>This is <b>WikiLite v0.0.1a05c</b>. It now connects to the real <a href='https://www.wikipedia.org'>Wikipedia</a> API!</p><p>Try searching for 'Quantum Physics' or click Random.</p>", 
+                isLocal: true 
+            };
             isLocalArticle = true;
         } else {
+            // Fetch from Real Wikipedia
             data = await apiGetArticleByTitle(identifier);
             isLocalArticle = false;
         }
 
+        // Update History
         if (currentId && currentId !== data.id) {
             historyStack.push({ id: currentId, title: currentTitle });
         }
@@ -68,14 +84,12 @@ async function loadArticle(identifier) {
         currentTitle = data.title;
         updateNavUI();
 
-        // FIX: Use textContent for title to prevent any residual HTML injection
+        // Render
         articleTitle.textContent = data.title;
-        
-        // Use innerHTML for content because it contains formatted Wikipedia HTML
         articleBody.innerHTML = data.content;
-        
         breadcrumb.textContent = isLocalArticle ? `Local / ${data.title}` : `Wikipedia / ${data.title}`;
         
+        // Show Edit button only for local articles
         if (isLocalArticle) {
             editBtn.classList.remove('hidden');
         } else {
@@ -83,7 +97,9 @@ async function loadArticle(identifier) {
         }
 
     } catch (error) {
+        console.error(error);
         articleTitle.textContent = "Not Found";
+        // Allow creating a local article if Wikipedia fails
         articleBody.innerHTML = `<p>Could not find "${identifier}" on Wikipedia.</p><button onclick="startCreateLocal('${identifier}')">Create Local Article</button>`;
         editBtn.classList.add('hidden');
     } finally {
@@ -99,7 +115,6 @@ async function handleSearch() {
     try {
         const results = await apiSearchArticles(query);
         if (results.length > 0) {
-            // Load the top result
             loadArticle(results[0].title);
         } else {
             articleTitle.textContent = "No Results";
@@ -140,7 +155,7 @@ function goBack() {
     currentId = prev.id;
     currentTitle = prev.title;
     updateNavUI();
-    loadArticle(prev.title); // Reload
+    loadArticle(prev.title); 
 }
 
 // Local Edit/Create Functions
@@ -152,7 +167,7 @@ function startCreateLocal(title) {
 }
 
 function enableEditMode(isNew = false) {
-    if (!isLocalArticle) return; // Safety check
+    if (!isLocalArticle) return; 
     isEditMode = true;
     articleBody.classList.add('hidden');
     editorContainer.classList.remove('hidden');
@@ -162,7 +177,6 @@ function enableEditMode(isNew = false) {
         editorTextarea.value = "";
         saveBtn.textContent = "Create Local Page";
     } else {
-        // Strip HTML tags for editing (simple version)
         editorTextarea.value = articleBody.innerText; 
         saveBtn.textContent = "Save Local Changes";
     }
@@ -176,7 +190,7 @@ function disableEditMode() {
 }
 
 async function saveLocalArticle() {
-    const content = `<p>${editorTextarea.value.replace(/\n/g, '<br>')}</p>`; // Simple formatting
+    const content = `<p>${editorTextarea.value.replace(/\n/g, '<br>')}</p>`; 
     showLoading(true);
     
     await apiCreateLocalArticle(currentId, currentTitle, content);
