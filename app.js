@@ -28,6 +28,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeIcon(savedTheme);
 
+    // 1. Load Theme Preference Immediately
+    initTheme();
+
     loadArticle("Welcome"); 
     
     searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSearch(); });
@@ -52,18 +55,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Theme Logic
+// NEW: Robust Theme Initialization
+function initTheme() {
+    const savedTheme = localStorage.getItem('wikilite_theme');
+    // Default to light if nothing saved, or use saved value
+    const theme = savedTheme || 'light';
+    applyTheme(theme);
+}
+
 function toggleTheme() {
     const currentTheme = document.documentElement.getAttribute('data-theme');
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    
-    document.documentElement.setAttribute('data-theme', newTheme);
+    applyTheme(newTheme);
     localStorage.setItem('wikilite_theme', newTheme);
-    updateThemeIcon(newTheme);
+}
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    updateThemeIcon(theme);
 }
 
 function updateThemeIcon(theme) {
-    themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+    if (themeToggle) {
+        themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
 }
 
 async function loadArticle(identifier) {

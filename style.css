@@ -10,20 +10,22 @@
     --hover-bg: #e0e0e0;
     --active-bg: #d0d0d0;
     --input-border: #cccccc;
+    --btn-text: #333333;
 }
 
 /* Dark Mode Variables */
 [data-theme="dark"] {
-    --bg-color: #121212;
-    --content-bg: #1e1e1e;
-    --text-color: #e0e0e0;
-    --border-color: #333333;
-    --sidebar-bg: #181818;
-    --link-color: #8ab4f8;
-    --header-bg: #1e1e1e;
-    --hover-bg: #333333;
-    --active-bg: #444444;
-    --input-border: #555555;
+    --bg-color: #121212 !important;
+    --content-bg: #1e1e1e !important;
+    --text-color: #e0e0e0 !important;
+    --border-color: #333333 !important;
+    --sidebar-bg: #181818 !important;
+    --link-color: #8ab4f8 !important;
+    --header-bg: #1e1e1e !important;
+    --hover-bg: #333333 !important;
+    --active-bg: #444444 !important;
+    --input-border: #555555 !important;
+    --btn-text: #e0e0e0 !important;
 }
 
 /* Reset & Base */
@@ -35,7 +37,7 @@ body {
     height: 100vh; 
     display: flex; 
     flex-direction: column; 
-    transition: background-color 0.3s, color 0.3s;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Header */
@@ -49,8 +51,19 @@ body {
 }
 .logo { font-size: 1.2rem; color: var(--text-color); }
 .version { font-size: 0.7rem; color: #888; vertical-align: super; }
-.search-box input { padding: 5px; border: 1px solid var(--input-border); background: var(--content-bg); color: var(--text-color); }
-.search-box button { padding: 5px 10px; cursor: pointer; background: var(--sidebar-bg); border: 1px solid var(--input-border); color: var(--text-color); }
+.search-box input { 
+    padding: 5px; 
+    border: 1px solid var(--input-border); 
+    background: var(--content-bg); 
+    color: var(--text-color); 
+}
+.search-box button { 
+    padding: 5px 10px; 
+    cursor: pointer; 
+    background: var(--sidebar-bg); 
+    border: 1px solid var(--input-border); 
+    color: var(--btn-text); 
+}
 
 /* Theme Toggle */
 .theme-toggle {
@@ -59,6 +72,7 @@ body {
     font-size: 1.2rem;
     cursor: pointer;
     margin-right: 15px;
+    padding: 5px;
 }
 
 /* Layout */
@@ -98,22 +112,26 @@ body {
 
 /* Article Nav */
 .article-nav { display: flex; align-items: center; margin-bottom: 15px; font-size: 0.85rem; color: #888; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
-.nav-btn { background: none; border: 1px solid var(--input-border); padding: 2px 8px; margin-right: 10px; cursor: pointer; border-radius: 3px; font-size: 0.8rem; color: var(--text-color); }
+.nav-btn { background: none; border: 1px solid var(--input-border); padding: 2px 8px; margin-right: 10px; cursor: pointer; border-radius: 3px; font-size: 0.8rem; color: var(--btn-text); }
 .nav-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Header & Edit Button */
 .article-header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; margin-bottom: 15px; }
 h1 { font-family: 'Linux Libertine', 'Georgia', serif; margin: 0; font-size: 1.8rem; color: var(--text-color); }
-.edit-btn { background: none; border: 1px solid var(--input-border); padding: 4px 10px; cursor: pointer; font-size: 0.8rem; border-radius: 3px; color: var(--text-color); }
+.edit-btn { background: none; border: 1px solid var(--input-border); padding: 4px 10px; cursor: pointer; font-size: 0.8rem; border-radius: 3px; color: var(--btn-text); }
 .edit-btn:hover { background-color: var(--hover-bg); }
 
 /* Editor Styles */
 #editorContainer { margin-top: 10px; }
-#editorTextarea { width: 100%; height: 300px; padding: 10px; font-family: monospace; border: 1px solid var(--input-border); resize: vertical; background: var(--content-bg); color: var(--text-color); }
+#editorTextarea { 
+    width: 100%; height: 300px; padding: 10px; font-family: monospace; 
+    border: 1px solid var(--input-border); resize: vertical; 
+    background: var(--content-bg); color: var(--text-color); 
+}
 .editor-actions { margin-top: 10px; display: flex; gap: 10px; }
 .primary-btn { background-color: #3366cc; color: white; border: none; padding: 8px 16px; cursor: pointer; border-radius: 3px; }
 .primary-btn:hover { background-color: #254a9e; }
-.secondary-btn { background-color: var(--hover-bg); border: 1px solid var(--input-border); padding: 8px 16px; cursor: pointer; border-radius: 3px; color: var(--text-color); }
+.secondary-btn { background-color: var(--hover-bg); border: 1px solid var(--input-border); padding: 8px 16px; cursor: pointer; border-radius: 3px; color: var(--btn-text); }
 
 /* Typography & Links */
 .wiki-text { line-height: 1.6; font-size: 1rem; color: var(--text-color); }
