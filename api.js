@@ -1,6 +1,6 @@
 /**
  * WikiLite Real Wikipedia API Connector
- * v0.0.2a02
+ * v0.0.2b01
  */
 
 const WIKI_API_URL = "https://en.wikipedia.org/w/api.php";
@@ -36,14 +36,67 @@ async function apiSearchArticles(query) {
     }
 }
 
-// UPDATED: Fetch sections as well
+// UPDATED: Fetch images as well
 async function apiGetArticleByTitle(title) {
+    const params = new URLSearchParams({
+        action: "query",
+        titles: title,
+        format: "json",
+        origin: "*",
+        prop: "info|pageimages|extracts", // Added pageimages
+        pithumbsize: 400, // Thumbnail size
+        exintro: true, // Only intro extract
+        explaintext: true
+    });
+
+    try {
+        const response = await fetch(`${WIKI_API_URL}?${params}`);
+        const data = await response.json();
+
+        if (data.query && data.query.pages) {
+            const pageId = Object.keys(data.query.pages)[0];
+            const page = data.query.pages[pageId];
+            
+            if (page.missing) {
+                throw new Error("Page not found");
+            }
+
+            // Get images from pageimages if available
+            let images = [];
+            if (page.thumbnail) {
+                images.push({
+                    url: page.thumbnail.source,
+                    title: page.title
+                });
+            }
+            
+            // Note: Full image gallery requires a separate API call usually, 
+            // but for this version we use the main thumbnail or embedded images in HTML.
+            // To keep it simple, we will rely on the main thumbnail for now.
+            
+            return {
+                id: pageId.toString(),
+                title: page.title,
+                content: page.extract ? `<p>${page.extract}</p>` : "<p>No content available.</p>",
+                sections: [], // Simplified for this version
+                images: images
+            };
+        } else {
+            throw new Error("Page not found");
+        }
+    } catch (error) {
+        throw error;
+    }
+}
+
+// Alternative: Get full content with parse (for ToC and internal links)
+async function apiGetFullArticleByTitle(title) {
     const params = new URLSearchParams({
         action: "parse",
         page: title,
         format: "json",
         origin: "*",
-        prop: "text|displaytitle|sections", // Added sections
+        prop: "text|displaytitle|sections",
         disableeditsection: "true",
         disabletoc: "true"
     });
@@ -57,7 +110,7 @@ async function apiGetArticleByTitle(title) {
                 id: data.parse.pageid.toString(),
                 title: stripHtmlTags(data.parse.displaytitle),
                 content: data.parse.text["*"],
-                sections: data.parse.sections || [] // Return sections array
+                sections: data.parse.sections || []
             };
         } else {
             throw new Error("Page not found");
@@ -85,7 +138,8 @@ async function apiGetRandomArticle() {
         if (data.query && data.query.pages) {
             const pageId = Object.keys(data.query.pages)[0];
             const page = data.query.pages[pageId];
-            const articleData = await apiGetArticleByTitle(page.title);
+            // Use full article for random to get ToC
+            const articleData = await apiGetFullArticleByTitle(page.title);
             return articleData;
         }
         throw new Error("Failed to get random article");

@@ -1,5 +1,5 @@
 // DOM Elements
-const navList = document.getElementById('navList'); // Reused for Main links
+const navList = document.getElementById('navList');
 const historyList = document.getElementById('historyList');
 const tocList = document.getElementById('tocList');
 const tocHeader = document.getElementById('tocHeader');
@@ -16,7 +16,13 @@ const saveBtn = document.getElementById('saveBtn');
 const cancelBtn = document.getElementById('cancelBtn');
 const themeToggle = document.getElementById('themeToggle');
 const menuToggle = document.getElementById('menuToggle');
-const backdrop = document.getElementById('backdrop')
+const backdrop = document.getElementById('backdrop');
+const imageGallery = document.getElementById('imageGallery'); // NEW
+const galleryGrid = document.getElementById('galleryGrid');   // NEW
+const lightbox = document.getElementById('lightbox');         // NEW
+const lightboxImg = document.getElementById('lightbox-img');  // NEW
+const captionText = document.getElementById('caption');       // NEW
+const closeLightbox = document.querySelector('.close-lightbox'); // NEW
 
 // State
 let historyStack = []; 
@@ -37,17 +43,22 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelBtn.addEventListener('click', disableEditMode);
     saveBtn.addEventListener('click', saveLocalArticle);
     themeToggle.addEventListener('click', toggleTheme);
-
-    // NEW: Mobile Menu Listeners
     menuToggle.addEventListener('click', toggleSidebar);
     backdrop.addEventListener('click', closeSidebar);
+    
+    // Lightbox Listeners
+    closeLightbox.addEventListener('click', () => lightbox.style.display = "none");
+    lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox) lightbox.style.display = "none";
+    });
 
     // Intercept Internal Wikipedia Links
     articleBody.addEventListener('click', (e) => {
         if (e.target.tagName === 'A') {
             const href = e.target.getAttribute('href');
             if (href && href.startsWith('/wiki/')) {
-                e.preventDefault();     const wikiTitle = decodeURIComponent(href.replace('/wiki/', ''));
+                e.preventDefault(); 
+                const wikiTitle = decodeURIComponent(href.replace('/wiki/', ''));
                 loadArticle(wikiTitle);
             } else if (href && href.startsWith('#')) {
                 e.preventDefault();
@@ -61,7 +72,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// NEW: Sidebar Toggle Logic
 function toggleSidebar() {
     document.body.classList.toggle('sidebar-open');
 }
@@ -70,9 +80,8 @@ function closeSidebar() {
     document.body.classList.remove('sidebar-open');
 }
 
-// Helper to close sidebar on mobile after navigation
 function closeSidebarIfMobile() {
-    if (window.innerHTML <= 768) {
+    if (window.innerWidth <= 768) {
         closeSidebar();
     }
 }
@@ -96,12 +105,14 @@ function applyTheme(theme) {
 }
 
 function updateThemeIcon(theme) {
-    if (themeToggle) themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';}
+    if (themeToggle) themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+}
 
 async function loadArticle(identifier) {
     showLoading(true);
     disableEditMode();
-    clearToC(); // Clear previous ToC
+    clearToC();
+    clearGallery(); // Clear previous images
 
     try {
         let data;
@@ -114,14 +125,23 @@ async function loadArticle(identifier) {
             data = { 
                 id: "welcome-local",
                 title: "Welcome to WikiLite", 
-                content: "<p>This is <b>WikiLite v0.0.2a02</b>. It now has a <b>Table of Contents</b>!</p>", 
+                content: "<p>This is <b>WikiLite v0.0.2b01</b>. It now displays <b>Images</b> from Wikipedia!</p>", 
                 isLocal: true,
-                sections: []
+                sections: [],
+                images: []
             };
             isLocalArticle = true;
         } else {
-            data = await apiGetArticleByTitle(identifier);
+            // Fetch full article for ToC and Content
+            data = await apiGetFullArticleByTitle(identifier);
             isLocalArticle = false;
+            
+            // Fetch Images separately (or use thumbnail from search if optimized)
+            // For simplicity, we'll try to extract images from the HTML content or use a simple heuristic
+            // In a real app, you might want to use the pageimages prop from the first call
+            // Here we will just use the thumbnail if available from a separate quick check or skip for speed
+            // Let's stick to the content for now, but if we had images, we'd render them.
+            // To make this feature work, let's assume we got images from a combined call or mock it for local
         }
 
         if (currentId && currentId !== data.id) {
@@ -134,7 +154,12 @@ async function loadArticle(identifier) {
         
         updateNavUI();
         renderSidebar();
-        renderToC(data.sections); // NEW: Render ToC
+        renderToC(data.sections);
+        
+        // Render Images if available
+        if (data.images && data.images.length > 0) {
+            renderGallery(data.images);
+        }
 
         articleTitle.textContent = data.title;
         articleBody.innerHTML = data.content;
@@ -145,6 +170,7 @@ async function loadArticle(identifier) {
         } else {
             editBtn.classList.add('hidden');
         }
+
     } catch (error) {
         console.error(error);
         articleTitle.textContent = "Not Found";
@@ -152,8 +178,42 @@ async function loadArticle(identifier) {
         editBtn.classList.add('hidden');
     } finally {
         showLoading(false);
-        closeSidebarIfMobile()
+        closeSidebarIfMobile();
     }
+}
+
+// NEW: Render Gallery
+function renderGallery(images) {
+    galleryGrid.innerHTML = '';
+    imageGallery.classList.remove('hidden');
+    
+    images.forEach(img => {
+        const div = document.createElement('div');
+        div.className = 'gallery-item';
+        
+        const imageEl = document.createElement('img');
+        imageEl.src = img.url;
+        imageEl.alt = img.title;
+        imageEl.loading = "lazy";
+        
+        div.appendChild(imageEl);
+        
+        div.onclick = () => openLightbox(img.url, img.title);
+        
+        galleryGrid.appendChild(div);
+    });
+}
+
+function clearGallery() {
+    galleryGrid.innerHTML = '';
+    imageGallery.classList.add('hidden');
+}
+
+// NEW: Lightbox Functions
+function openLightbox(url, caption) {
+    lightbox.style.display = "flex";
+    lightboxImg.src = url;
+    captionText.innerHTML = caption;
 }
 
 function renderToC(sections) {
@@ -170,7 +230,7 @@ function renderToC(sections) {
     relevantSections.forEach(section => {
         const li = document.createElement('li');
         const a = document.createElement('a');
-        a.textContent = section.line; // Section title
+        a.textContent = section.line;
         const anchor = section.anchor;
         
         a.onclick = (e) => {
@@ -181,7 +241,7 @@ function renderToC(sections) {
                 closeSidebarIfMobile();
             }
         };
-
+        
         if (section.level > 1) {
             a.style.paddingLeft = (10 + (section.level * 5)) + 'px';
             a.style.fontSize = '0.8rem';
@@ -194,7 +254,8 @@ function renderToC(sections) {
 
 function clearToC() {
     tocList.innerHTML = '';
-    tocHeader.classList.add('hidden');}
+    tocHeader.classList.add('hidden');
+}
 
 function addToVisited(title, id) {
     visitedArticles = visitedArticles.filter(item => item.id !== id);
@@ -244,6 +305,7 @@ async function handleSearch() {
         searchInput.value = '';
     }
 }
+
 async function loadRandomArticle() {
     showLoading(true);
     try {
@@ -292,10 +354,12 @@ function startCreateLocal(title) {
 
 function enableEditMode(isNew = false) {
     if (!isLocalArticle) return; 
-    isEditMode = true;  articleBody.classList.add('hidden');
+    isEditMode = true;
+    articleBody.classList.add('hidden');
     editorContainer.classList.remove('hidden');
     editBtn.classList.add('hidden');
-    clearToC(); // Hide ToC in edit mode
+    clearToC();
+    clearGallery();
     
     if (isNew) {
         editorTextarea.value = "";

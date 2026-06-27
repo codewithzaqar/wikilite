@@ -13,16 +13,23 @@
         <div style="display:flex; align-items:center;">
             <button id="menuToggle" class="menu-toggle" title="Toggle Menu">☰</button>
             <button id="themeToggle" class="theme-toggle" title="Toggle Dark Mode">🌙</button>
-            <div class="logo">Wiki<strong>Lite</strong> <span class="version">v0.0.2a</span></div>
+            <div class="logo">Wiki<strong>Lite</strong> <span class="version">v0.0.2b</span></div>
         </div>
         <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Search Wikipedia...">
+            <input type="text" id="searchInput" placeholder="Search...">
             <button onclick="handleSearch()">Go</button>
         </div>
     </header>
 
-    <!-- Backdrop for mobile sidebar -->
+    <!-- Backdrop for mobile sidebar & Lightbox -->
     <div class="backdrop" id="backdrop"></div>
+
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox hidden">
+        <span class="close-lightbox">&times;</span>
+        <img class="lightbox-content" id="lightbox-img">
+        <div id="caption"></div>
+    </div>
 
     <div class="container">
         <!-- Sidebar Navigation -->
@@ -39,9 +46,7 @@
             </ul>
 
             <h3 id="tocHeader" class="hidden">Contents</h3>
-            <ul id="tocList">
-                <!-- ToC items injected here -->
-            </ul>
+            <ul id="tocList"></ul>
             
             <div class="sidebar-tools">
                 <hr>
@@ -64,6 +69,12 @@
             <!-- View Mode -->
             <div id="articleBody" class="wiki-text">
                 Select an article from the sidebar or search to begin.
+            </div>
+
+            <!-- Image Gallery -->
+            <div id="imageGallery" class="gallery hidden">
+                <h3>Images</h3>
+                <div id="galleryGrid" class="gallery-grid"></div>
             </div>
 
             <!-- Edit/Create Mode Form -->
