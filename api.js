@@ -1,6 +1,6 @@
 /**
  * WikiLite Real Wikipedia API Connector
- * v0.0.2b01
+ * v0.0.2b02
  */
 
 const WIKI_API_URL = "https://en.wikipedia.org/w/api.php";
@@ -10,13 +10,74 @@ function stripHtmlTags(html) {
     return doc.body.textContent || "";
 }
 
-async function apiSearchArticles(query) {
+// NEW: Extract images from parsed HTML
+function extractImagesFromHtml(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const imgs = doc.querySelectorAll('img');
+    const images = [];
+    const seenUrls = new Set();
+    
+    imgs.forEach(img => {
+        const width = parseInt(img.getAttribute('width') || '0');
+        const height = parseInt(img.getAttribute('height') || '0');
+        
+        // Filter out small icons and flags
+        if (width > 0 && width < 80) return;
+        if (height > 0 && height < 80) return;
+        
+        let src = img.getAttribute('src');
+        if (!src) return;
+        if (src.startsWith('//')) src = 'https:' + src;
+        
+        // Avoid duplicates and icon URLs
+        if (seenUrls.has(src) || src.includes('icon') || src.includes('logo')) return;
+        seenUrls.add(src);
+        
+        const alt = img.getAttribute('alt') || 'Image';
+        images.push({ url: src, title: alt });
+    });
+    
+    return images;
+}
+
+// NEW: Search Suggestions (Autocomplete)
+async function apiGetSearchSuggestions(query) {
+    const params = new URLSearchParams({
+        action: "opensearch",
+        search: query,
+        limit: 6,
+        namespace: 0,
+        format: "json",
+        origin: "*"
+    });
+
+    try {
+        const response = await fetch(`${WIKI_API_URL}?${params}`);
+        const data = await response.json();
+        
+        // data format: [query, [titles], [descriptions], [urls]]
+        if (data && data[1]) {
+            return data[1].map((title, index) => ({
+                title: title,
+                description: data[2][index] || ''
+            }));
+        }
+        return [];
+    } catch (error) {
+        return [];
+    }
+}
+
+// NEW: Full Search Results with Snippets
+async function apiSearchArticlesFull(query) {
     const params = new URLSearchParams({
         action: "query",
         list: "search",
         srsearch: query,
+        srlimit: 10,
         format: "json",
-        origin: "*" 
+        origin: "*"
     });
 
     try {
@@ -25,71 +86,17 @@ async function apiSearchArticles(query) {
         
         if (data.query && data.query.search) {
             return data.query.search.map(item => ({
-                id: item.pageid.toString(),
-                title: item.title
+                title: item.title,
+                snippet: item.snippet, 
+                pageid: item.pageid.toString()
             }));
         }
         return [];
     } catch (error) {
-        console.error("API Search Error:", error);
         return [];
     }
 }
 
-// UPDATED: Fetch images as well
-async function apiGetArticleByTitle(title) {
-    const params = new URLSearchParams({
-        action: "query",
-        titles: title,
-        format: "json",
-        origin: "*",
-        prop: "info|pageimages|extracts", // Added pageimages
-        pithumbsize: 400, // Thumbnail size
-        exintro: true, // Only intro extract
-        explaintext: true
-    });
-
-    try {
-        const response = await fetch(`${WIKI_API_URL}?${params}`);
-        const data = await response.json();
-
-        if (data.query && data.query.pages) {
-            const pageId = Object.keys(data.query.pages)[0];
-            const page = data.query.pages[pageId];
-            
-            if (page.missing) {
-                throw new Error("Page not found");
-            }
-
-            // Get images from pageimages if available
-            let images = [];
-            if (page.thumbnail) {
-                images.push({
-                    url: page.thumbnail.source,
-                    title: page.title
-                });
-            }
-            
-            // Note: Full image gallery requires a separate API call usually, 
-            // but for this version we use the main thumbnail or embedded images in HTML.
-            // To keep it simple, we will rely on the main thumbnail for now.
-            
-            return {
-                id: pageId.toString(),
-                title: page.title,
-                content: page.extract ? `<p>${page.extract}</p>` : "<p>No content available.</p>",
-                sections: [], // Simplified for this version
-                images: images
-            };
-        } else {
-            throw new Error("Page not found");
-        }
-    } catch (error) {
-        throw error;
-    }
-}
-
-// Alternative: Get full content with parse (for ToC and internal links)
 async function apiGetFullArticleByTitle(title) {
     const params = new URLSearchParams({
         action: "parse",
@@ -106,11 +113,13 @@ async function apiGetFullArticleByTitle(title) {
         const data = await response.json();
 
         if (data.parse) {
+            const htmlContent = data.parse.text["*"];
             return {
                 id: data.parse.pageid.toString(),
                 title: stripHtmlTags(data.parse.displaytitle),
-                content: data.parse.text["*"],
-                sections: data.parse.sections || []
+                content: htmlContent,
+                sections: data.parse.sections || [],
+                images: extractImagesFromHtml(htmlContent) // NEW: Extract images
             };
         } else {
             throw new Error("Page not found");
@@ -138,9 +147,7 @@ async function apiGetRandomArticle() {
         if (data.query && data.query.pages) {
             const pageId = Object.keys(data.query.pages)[0];
             const page = data.query.pages[pageId];
-            // Use full article for random to get ToC
-            const articleData = await apiGetFullArticleByTitle(page.title);
-            return articleData;
+            return await apiGetFullArticleByTitle(page.title);
         }
         throw new Error("Failed to get random article");
     } catch (error) {
@@ -161,7 +168,7 @@ function saveLocalArticles(articles) {
 async function apiCreateLocalArticle(id, title, content) {
     let articles = getLocalArticles();
     const existingIndex = articles.findIndex(a => a.id === id);
-    const newArticle = { id, title, content, isLocal: true };
+    const newArticle = { id, title, content, isLocal: true, images: [] };
     
     if (existingIndex !== -1) {
         articles[existingIndex] = newArticle;

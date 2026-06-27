@@ -15,9 +15,12 @@
             <button id="themeToggle" class="theme-toggle" title="Toggle Dark Mode">🌙</button>
             <div class="logo">Wiki<strong>Lite</strong> <span class="version">v0.0.2b</span></div>
         </div>
-        <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Search...">
+        
+        <!-- Search Wrapper for Autocomplete -->
+        <div class="search-wrapper">
+            <input type="text" id="searchInput" placeholder="Search Wikipedia...">
             <button onclick="handleSearch()">Go</button>
+            <ul id="suggestionsList" class="suggestions hidden"></ul>
         </div>
     </header>
 
@@ -71,6 +74,11 @@
                 Select an article from the sidebar or search to begin.
             </div>
 
+            <!-- Search Results Page -->
+            <div id="searchResultsContainer" class="search-results hidden">
+                <ul id="searchResultsList"></ul>
+            </div>
+
             <!-- Image Gallery -->
             <div id="imageGallery" class="gallery hidden">
                 <h3>Images</h3>
@@ -86,7 +94,10 @@
                 </div>
             </div>
 
-            <div id="loading" class="hidden">Loading data...</div>
+            <!-- Loading Spinner -->
+            <div id="loading" class="hidden">
+                <div class="spinner"></div>
+            </div>
         </main>
     </div>
 
