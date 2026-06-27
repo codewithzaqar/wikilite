@@ -70,10 +70,10 @@ wikilite/
 
 ## Roadmap
 
-* []**v0.0.2**: Add Dark Mode toggle.
-* []**v0.0.3**: Save local articles to `localStorage` so they persist after refresh.
-* []**v0.0.4**: Add Table of Contents parsing for long articles.
-* []**v1.0.0**: Progresive Web App (PWA) support for offline reading.
+* [ ] **v0.0.2**: Add Dark Mode toggle.
+* [ ] **v0.0.3**: Save local articles to `localStorage` so they persist after refresh.
+* [ ] **v0.0.4**: Add Table of Contents parsing for long articles.
+* [ ] **v1.0.0**: Progresive Web App (PWA) support for offline reading.
 
 ## License
 
