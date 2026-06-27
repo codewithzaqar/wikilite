@@ -2,22 +2,30 @@
 
 **WikiLite** is a lightweight, modular Wikipedia client built with vanilla HTML, CSS, and JavaScript. It connects directly to the live [Wikipedia API](https://www.mediawiki.org/wiki/API:Main_page) to fetch real-time articles, while also supporting local user-created content.
 
-> **Current Version:** v0.0.1
+> **Current Version:** v0.0.2
 > **Status:** Alpha / Public Beta
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![JavaScript](https://img.shields.io/badge/JS-Vanilla-yellow)
+![API](https://img.shields.io/badge/API-Wikipedia-orange)
 
 ## Features
 
-* **Live Wikipedia Integration:** Search and read millions of articles from Wikipedia in real-time.
-* **Smart Navigation:**
-	* Click internal links (e.g., `<a href="/wiki/HTML">`) to navigate without leaving the app.
-	* "Back" button history stack.
-	* Dynamic sidebar showing recent browsing history.
-* **Local Content Creation:** Create and edit your own "local" articles that persist during the session.
-* **Random Article:** Discover new topics with one click.
-* **Responsive Design:** Clean, encyclopedia-style layout that works on desktop and mobile.
+*   **Live Wikipedia Integration:** Search and read millions of articles in real-time.
+*   **Advanced Search:**
+    *   **Autocomplete:** Real-time suggestions as you type.
+    *   **Keyboard Navigation:** Use `Arrow Keys` and `Enter` to navigate suggestions.
+    *   **"Did You Mean?":** Automatic spell-checking for misspelled queries.
+    *   **Search Results Page:** Displays snippets if an exact match isn't found.
+*   **Rich Media:**
+    *   **Smart Image Gallery:** Automatically extracts and displays relevant images from articles.
+    *   **Lightbox Modal:** Click images to view them in full size.
+*   **User Experience:**
+    *   **Dark Mode:** Toggle between light and dark themes (persists across sessions).
+    *   **Mobile Responsive:** Fully optimized for smartphones with a collapsible sidebar.
+    *   **Table of Contents:** Dynamic sidebar navigation for long articles.
+    *   **History & Back Button:** Easy navigation through your browsing session.
+*   **Local Content:** Create and edit your own "local" articles that persist in your browser's storage.
 
 ## Live Demo
 
@@ -70,9 +78,10 @@ wikilite/
 
 ## Roadmap
 
-* [ ] **v0.0.2**: Add Dark Mode toggle.
-* [ ] **v0.0.3**: Save local articles to `localStorage` so they persist after refresh.
-* [ ] **v0.0.4**: Add Table of Contents parsing for long articles.
+* [x] **v0.0.2**: Add Dark Mode toggle.
+* [ ] **v0.0.3**: Offline support via Service Workers (PWA).
+* [ ] **v0.0.4**: Save articles to `localStorage` for offline reading.
+* [ ] **v0.0.5**: Multi-language support (switch between Wikipedia languages).
 * [ ] **v1.0.0**: Progresive Web App (PWA) support for offline reading.
 
 ## License
