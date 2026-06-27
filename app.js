@@ -1,5 +1,8 @@
 // DOM Elements
-const navList = document.getElementById('historyList');
+const navList = document.getElementById('navList'); // Reused for Main links
+const historyList = document.getElementById('historyList');
+const tocList = document.getElementById('tocList');
+const tocHeader = document.getElementById('tocHeader');
 const articleTitle = document.getElementById('articleTitle');
 const articleBody = document.getElementById('articleBody');
 const loadingIndicator = document.getElementById('loading');
@@ -23,14 +26,7 @@ let isLocalArticle = false;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    // Load Theme Preference
-    const savedTheme = localStorage.getItem('wikilite_theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeIcon(savedTheme);
-
-    // 1. Load Theme Preference Immediately
     initTheme();
-
     loadArticle("Welcome"); 
     
     searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSearch(); });
@@ -38,8 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
     editBtn.addEventListener('click', enableEditMode);
     cancelBtn.addEventListener('click', disableEditMode);
     saveBtn.addEventListener('click', saveLocalArticle);
-    
-    // Theme Toggle Listener
     themeToggle.addEventListener('click', toggleTheme);
 
     // Intercept Internal Wikipedia Links
@@ -50,17 +44,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault(); 
                 const wikiTitle = decodeURIComponent(href.replace('/wiki/', ''));
                 loadArticle(wikiTitle);
+            } else if (href && href.startsWith('#')) {
+                // Handle internal anchor jumps
+                e.preventDefault();
+                const targetId = href.substring(1);
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({ behavior: 'smooth' });
+                }
             }
         }
     });
 });
 
-// NEW: Robust Theme Initialization
+// Theme Logic
 function initTheme() {
-    const savedTheme = localStorage.getItem('wikilite_theme');
-    // Default to light if nothing saved, or use saved value
-    const theme = savedTheme || 'light';
-    applyTheme(theme);
+    const savedTheme = localStorage.getItem('wikilite_theme') || 'light';
+    applyTheme(savedTheme);
 }
 
 function toggleTheme() {
@@ -76,19 +76,17 @@ function applyTheme(theme) {
 }
 
 function updateThemeIcon(theme) {
-    if (themeToggle) {
-        themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
-    }
+    if (themeToggle) themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
 }
 
 async function loadArticle(identifier) {
     showLoading(true);
     disableEditMode();
+    clearToC(); // Clear previous ToC
 
     try {
         let data;
         
-        // Check Local First
         const local = await apiGetLocalArticle(identifier);
         if (local) {
             data = local;
@@ -97,31 +95,28 @@ async function loadArticle(identifier) {
             data = { 
                 id: "welcome-local",
                 title: "Welcome to WikiLite", 
-                content: "<p>This is <b>WikiLite v0.0.2a01</b>. It now supports <b>Dark Mode</b> and saves your local articles!</p>", 
-                isLocal: true 
+                content: "<p>This is <b>WikiLite v0.0.2a02</b>. It now has a <b>Table of Contents</b>!</p>", 
+                isLocal: true,
+                sections: []
             };
             isLocalArticle = true;
         } else {
-            // Fetch from Real Wikipedia
             data = await apiGetArticleByTitle(identifier);
             isLocalArticle = false;
         }
 
-        // Update History Stack
         if (currentId && currentId !== data.id) {
             historyStack.push({ id: currentId, title: currentTitle });
         }
         
-        // Update Visited List
         addToVisited(data.title, data.id);
-
         currentId = data.id;
         currentTitle = data.title;
         
         updateNavUI();
         renderSidebar();
+        renderToC(data.sections); // NEW: Render ToC
 
-        // Render Content
         articleTitle.textContent = data.title;
         articleBody.innerHTML = data.content;
         breadcrumb.textContent = isLocalArticle ? `Local / ${data.title}` : `Wikipedia / ${data.title}`;
@@ -142,6 +137,53 @@ async function loadArticle(identifier) {
     }
 }
 
+// NEW: Render Table of Contents
+function renderToC(sections) {
+    tocList.innerHTML = '';
+    
+    if (!sections || sections.length === 0) {
+        tocHeader.classList.add('hidden');
+        return;
+    }
+
+    tocHeader.classList.remove('hidden');
+    
+    // Filter out the main title (level 0) if present, usually we want h2/h3
+    const relevantSections = sections.filter(s => s.level > 0);
+
+    relevantSections.forEach(section => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.textContent = section.line; // Section title
+        
+        // Wikipedia uses IDs like "section-1" or just the anchor name
+        // The API returns 'anchor' which matches the ID in the HTML
+        const anchor = section.anchor;
+        
+        a.onclick = (e) => {
+            e.preventDefault();
+            const target = document.getElementById(anchor);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth' });
+            }
+        };
+        
+        // Indent based on level
+        if (section.level > 1) {
+            a.style.paddingLeft = (10 + (section.level * 5)) + 'px';
+            a.style.fontSize = '0.8rem';
+        }
+
+        li.appendChild(a);
+        tocList.appendChild(li);
+    });
+}
+
+function clearToC() {
+    tocList.innerHTML = '';
+    tocHeader.classList.add('hidden');
+}
+
 function addToVisited(title, id) {
     visitedArticles = visitedArticles.filter(item => item.id !== id);
     visitedArticles.unshift({ title, id });
@@ -149,9 +191,9 @@ function addToVisited(title, id) {
 }
 
 function renderSidebar() {
-    navList.innerHTML = '';
+    historyList.innerHTML = '';
     if (visitedArticles.length === 0) {
-        navList.innerHTML = '<li style="color:#888; font-size:0.8rem;">No history yet...</li>';
+        historyList.innerHTML = '<li style="color:#888; font-size:0.8rem;">No history yet...</li>';
         return;
     }
 
@@ -166,7 +208,7 @@ function renderSidebar() {
         
         a.onclick = () => loadArticle(item.title); 
         li.appendChild(a);
-        navList.appendChild(li);
+        historyList.appendChild(li);
     });
 }
 
@@ -242,6 +284,7 @@ function enableEditMode(isNew = false) {
     articleBody.classList.add('hidden');
     editorContainer.classList.remove('hidden');
     editBtn.classList.add('hidden');
+    clearToC(); // Hide ToC in edit mode
     
     if (isNew) {
         editorTextarea.value = "";

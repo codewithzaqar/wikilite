@@ -30,6 +30,7 @@
 
 /* Reset & Base */
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; } /* NEW: Smooth Scrolling */
 body { 
     font-family: sans-serif; 
     background-color: var(--bg-color); 
@@ -80,7 +81,7 @@ body {
 
 /* Sidebar */
 .sidebar {
-    width: 200px;
+    width: 220px; /* Slightly wider for ToC */
     background-color: var(--sidebar-bg);
     border-right: 1px solid var(--border-color);
     padding: 20px;
@@ -98,6 +99,16 @@ body {
 }
 .sidebar a:hover { background-color: var(--hover-bg); text-decoration: none; }
 .sidebar a.active { background-color: var(--active-bg); font-weight: bold; color: var(--text-color); }
+
+/* ToC Specific Styles */
+#tocList a {
+    font-size: 0.85rem;
+    padding-left: 10px;
+    border-left: 2px solid transparent;
+}
+#tocList a:hover {
+    border-left: 2px solid var(--link-color);
+}
 
 /* Main Content */
 .content {
@@ -137,6 +148,14 @@ h1 { font-family: 'Linux Libertine', 'Georgia', serif; margin: 0; font-size: 1.8
 .wiki-text { line-height: 1.6; font-size: 1rem; color: var(--text-color); }
 .wiki-text a { color: var(--link-color); text-decoration: none; }
 .wiki-text a:hover { text-decoration: underline; }
+
+/* Headings in Content for Anchor Jumping */
+.wiki-text h2, .wiki-text h3, .wiki-text h4 {
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
 
 .hidden { display: none !important; }
 #loading { color: #888; font-style: italic; margin-top: 10px; }

@@ -1,6 +1,6 @@
 /**
  * WikiLite Real Wikipedia API Connector
- * v0.0.2a01
+ * v0.0.2a02
  */
 
 const WIKI_API_URL = "https://en.wikipedia.org/w/api.php";
@@ -36,13 +36,14 @@ async function apiSearchArticles(query) {
     }
 }
 
+// UPDATED: Fetch sections as well
 async function apiGetArticleByTitle(title) {
     const params = new URLSearchParams({
         action: "parse",
         page: title,
         format: "json",
         origin: "*",
-        prop: "text|displaytitle",
+        prop: "text|displaytitle|sections", // Added sections
         disableeditsection: "true",
         disabletoc: "true"
     });
@@ -55,7 +56,8 @@ async function apiGetArticleByTitle(title) {
             return {
                 id: data.parse.pageid.toString(),
                 title: stripHtmlTags(data.parse.displaytitle),
-                content: data.parse.text["*"]
+                content: data.parse.text["*"],
+                sections: data.parse.sections || [] // Return sections array
             };
         } else {
             throw new Error("Page not found");
@@ -104,7 +106,6 @@ function saveLocalArticles(articles) {
 
 async function apiCreateLocalArticle(id, title, content) {
     let articles = getLocalArticles();
-    // Check if exists and update, or push new
     const existingIndex = articles.findIndex(a => a.id === id);
     const newArticle = { id, title, content, isLocal: true };
     
