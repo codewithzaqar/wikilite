@@ -59,7 +59,7 @@ async function loadArticle(identifier) {
             data = { 
                 id: "welcome-local",
                 title: "Welcome to WikiLite", 
-                content: "<p>This is <b>WikiLite v0.0.1a06b</b>. It now connects to the real <a href='https://www.wikipedia.org'>Wikipedia</a> API!</p><p>Try searching for 'Quantum Physics' or click Random.</p>", 
+                content: "<p>This is <b>WikiLite v0.0.1</b>. It now connects to the real <a href='https://www.wikipedia.org'>Wikipedia</a> API!</p><p>Try searching for 'Quantum Physics' or click Random.</p>", 
                 isLocal: true 
             };
             isLocalArticle = true;
