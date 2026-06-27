@@ -11,10 +11,11 @@ const editorContainer = document.getElementById('editorContainer');
 const editorTextarea = document.getElementById('editorTextarea');
 const saveBtn = document.getElementById('saveBtn');
 const cancelBtn = document.getElementById('cancelBtn');
+const themeToggle = document.getElementById('themeToggle');
 
 // State
-let historyStack = []; // For Back Button (stores {id, title})
-let visitedArticles = []; // For Sidebar History (stores {id, title})
+let historyStack = []; 
+let visitedArticles = []; 
 let currentId = null; 
 let currentTitle = "";
 let isEditMode = false;
@@ -22,6 +23,11 @@ let isLocalArticle = false;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    // Load Theme Preference
+    const savedTheme = localStorage.getItem('wikilite_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+
     loadArticle("Welcome"); 
     
     searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSearch(); });
@@ -29,6 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
     editBtn.addEventListener('click', enableEditMode);
     cancelBtn.addEventListener('click', disableEditMode);
     saveBtn.addEventListener('click', saveLocalArticle);
+    
+    // Theme Toggle Listener
+    themeToggle.addEventListener('click', toggleTheme);
 
     // Intercept Internal Wikipedia Links
     articleBody.addEventListener('click', (e) => {
@@ -42,6 +51,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// Theme Logic
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('wikilite_theme', newTheme);
+    updateThemeIcon(newTheme);
+}
+
+function updateThemeIcon(theme) {
+    themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+}
 
 async function loadArticle(identifier) {
     showLoading(true);
@@ -59,7 +82,7 @@ async function loadArticle(identifier) {
             data = { 
                 id: "welcome-local",
                 title: "Welcome to WikiLite", 
-                content: "<p>This is <b>WikiLite v0.0.1</b>. It now connects to the real <a href='https://www.wikipedia.org'>Wikipedia</a> API!</p><p>Try searching for 'Quantum Physics' or click Random.</p>", 
+                content: "<p>This is <b>WikiLite v0.0.2a01</b>. It now supports <b>Dark Mode</b> and saves your local articles!</p>", 
                 isLocal: true 
             };
             isLocalArticle = true;
@@ -69,28 +92,25 @@ async function loadArticle(identifier) {
             isLocalArticle = false;
         }
 
-        // Update History Stack (for Back Button)
-        // Only push if we are moving to a NEW article
+        // Update History Stack
         if (currentId && currentId !== data.id) {
             historyStack.push({ id: currentId, title: currentTitle });
         }
         
-        // Update Visited List (for Sidebar)
+        // Update Visited List
         addToVisited(data.title, data.id);
 
-        // Set Current State
         currentId = data.id;
         currentTitle = data.title;
         
         updateNavUI();
-        renderSidebar(); // FIX: Force sidebar re-render to update active class
+        renderSidebar();
 
         // Render Content
         articleTitle.textContent = data.title;
         articleBody.innerHTML = data.content;
         breadcrumb.textContent = isLocalArticle ? `Local / ${data.title}` : `Wikipedia / ${data.title}`;
         
-        // Show Edit button only for local articles
         if (isLocalArticle) {
             editBtn.classList.remove('hidden');
         } else {
@@ -107,18 +127,10 @@ async function loadArticle(identifier) {
     }
 }
 
-// Manage Sidebar History
 function addToVisited(title, id) {
-    // Remove if already exists to move it to top
     visitedArticles = visitedArticles.filter(item => item.id !== id);
-    
-    // Add to front
     visitedArticles.unshift({ title, id });
-    
-    // Keep only last 10
     if (visitedArticles.length > 10) visitedArticles.pop();
-    
-    // Note: We don't call renderSidebar() here because loadArticle() calls it after setting currentId
 }
 
 function renderSidebar() {
@@ -133,7 +145,6 @@ function renderSidebar() {
         const a = document.createElement('a');
         a.textContent = item.title;
         
-        // FIX: Strict equality check for active state
         if (item.id === currentId) {
             a.classList.add('active');
         }
@@ -169,11 +180,7 @@ async function loadRandomArticle() {
     showLoading(true);
     try {
         const data = await apiGetRandomArticle();
-        
-        // Push current to history stack before changing
-        if (currentId) {
-            historyStack.push({ id: currentId, title: currentTitle });
-        }
+        if (currentId) historyStack.push({ id: currentId, title: currentTitle });
         
         currentId = data.id;
         currentTitle = data.title;
@@ -181,7 +188,7 @@ async function loadRandomArticle() {
         
         addToVisited(data.title, data.id);
         updateNavUI();
-        renderSidebar(); // FIX: Update sidebar
+        renderSidebar();
         
         articleTitle.textContent = data.title;
         articleBody.innerHTML = data.content;
@@ -198,18 +205,15 @@ function goBack() {
     if (historyStack.length === 0) return;
     
     const prev = historyStack.pop();
-    
-    // Set state manually before loading to ensure active class works
     currentId = prev.id;
     currentTitle = prev.title;
     
     updateNavUI();
-    renderSidebar(); // FIX: Update sidebar before fetch completes
+    renderSidebar();
     
     loadArticle(prev.title); 
 }
 
-// Local Edit/Create Functions
 function startCreateLocal(title) {
     isLocalArticle = true;
     currentId = title.toLowerCase().replace(/\s+/g, '_');
@@ -251,7 +255,7 @@ async function saveLocalArticle() {
     articleTitle.textContent = currentTitle;
     breadcrumb.textContent = `Local / ${currentTitle}`;
     addToVisited(currentTitle, currentId);
-    renderSidebar(); // FIX: Update sidebar
+    renderSidebar();
     showLoading(false);
 }
 

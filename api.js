@@ -1,6 +1,6 @@
 /**
  * WikiLite Real Wikipedia API Connector
- * v0.0.1a06
+ * v0.0.2a01
  */
 
 const WIKI_API_URL = "https://en.wikipedia.org/w/api.php";
@@ -92,15 +92,33 @@ async function apiGetRandomArticle() {
     }
 }
 
-// Local Database Mocks
-let localDatabase = [];
+// Local Database with LocalStorage Persistence
+function getLocalArticles() {
+    const stored = localStorage.getItem('wikilite_local_articles');
+    return stored ? JSON.parse(stored) : [];
+}
+
+function saveLocalArticles(articles) {
+    localStorage.setItem('wikilite_local_articles', JSON.stringify(articles));
+}
 
 async function apiCreateLocalArticle(id, title, content) {
+    let articles = getLocalArticles();
+    // Check if exists and update, or push new
+    const existingIndex = articles.findIndex(a => a.id === id);
     const newArticle = { id, title, content, isLocal: true };
-    localDatabase.push(newArticle);
+    
+    if (existingIndex !== -1) {
+        articles[existingIndex] = newArticle;
+    } else {
+        articles.push(newArticle);
+    }
+    
+    saveLocalArticles(articles);
     return newArticle;
 }
 
 async function apiGetLocalArticle(id) {
-    return localDatabase.find(item => item.id === id);
+    const articles = getLocalArticles();
+    return articles.find(item => item.id === id);
 }
