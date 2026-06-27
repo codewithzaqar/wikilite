@@ -23,9 +23,9 @@ const lightbox = document.getElementById('lightbox');
 const lightboxImg = document.getElementById('lightbox-img');
 const captionText = document.getElementById('caption');
 const closeLightbox = document.querySelector('.close-lightbox');
-const suggestionsList = document.getElementById('suggestionsList'); // NEW
-const searchResultsContainer = document.getElementById('searchResultsContainer'); // NEW
-const searchResultsList = document.getElementById('searchResultsList'); // NEW
+const suggestionsList = document.getElementById('suggestionsList');
+const searchResultsContainer = document.getElementById('searchResultsContainer');
+const searchResultsList = document.getElementById('searchResultsList');
 
 // State
 let historyStack = []; 
@@ -34,16 +34,43 @@ let currentId = null;
 let currentTitle = "";
 let isEditMode = false;
 let isLocalArticle = false;
-let searchTimeout; // NEW
+let searchTimeout;
+let currentSuggestionIndex = -1; // NEW: Track keyboard selection
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     loadArticle("Welcome"); 
     
-    // Search Listeners
-    searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSearch(); });
-    searchInput.addEventListener('input', handleSearchInput); // NEW
+    searchInput.addEventListener('keypress', (e) => { 
+        if (e.key === 'Enter') {
+            e.preventDefault(); // Prevent default form submit
+            handleSearch(); 
+        }
+    });
+    
+    // NEW: Keyboard Navigation for Suggestions
+    searchInput.addEventListener('keydown', (e) => {
+        if (suggestionsList.classList.contains('hidden')) return;
+        
+        const items = suggestionsList.querySelectorAll('li');
+        if (items.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            currentSuggestionIndex = (currentSuggestionIndex + 1) % items.length;
+            updateActiveSuggestion(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            currentSuggestionIndex = (currentSuggestionIndex - 1 + items.length) % items.length;
+            updateActiveSuggestion(items);
+        } else if (e.key === 'Enter' && currentSuggestionIndex !== -1) {
+            e.preventDefault();
+            items[currentSuggestionIndex].click();
+        }
+    });
+
+    searchInput.addEventListener('input', handleSearchInput);
     
     backBtn.addEventListener('click', goBack);
     editBtn.addEventListener('click', enableEditMode);
@@ -55,13 +82,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     closeLightbox.addEventListener('click', () => lightbox.style.display = "none");
     lightbox.addEventListener('click', (e) => { if (e.target === lightbox) lightbox.style.display = "none"; });
-
-    // Close suggestions when clicking outside
+    
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.search-wrapper')) hideSuggestions();
     });
 
-    // Intercept Internal Wikipedia Links
     articleBody.addEventListener('click', (e) => {
         if (e.target.tagName === 'A') {
             const href = e.target.getAttribute('href');
@@ -79,14 +104,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// NEW: Search Autocomplete Logic
+// NEW: Update Active Suggestion Visuals
+function updateActiveSuggestion(items) {
+    items.forEach((item, index) => {
+        if (index === currentSuggestionIndex) {
+            item.classList.add('active');
+            item.scrollIntoView({ block: 'nearest' });
+        } else {
+            item.classList.remove('active');
+        }
+    });
+}
+
 function handleSearchInput(e) {
     clearTimeout(searchTimeout);
+    currentSuggestionIndex = -1; // Reset selection on type
     const query = e.target.value.trim();
     if (query.length < 2) {
         hideSuggestions();
         return;
     }
+    // Debounce for 300ms
     searchTimeout = setTimeout(() => fetchSuggestions(query), 300);
 }
 
@@ -116,9 +154,10 @@ function renderSuggestions(suggestions) {
 
 function hideSuggestions() {
     suggestionsList.classList.add('hidden');
+    currentSuggestionIndex = -1;
 }
 
-// Theme & Sidebar Logic (Same as before)
+// Theme & Sidebar Logic
 function initTheme() {
     const savedTheme = localStorage.getItem('wikilite_theme') || 'light';
     applyTheme(savedTheme);
@@ -140,13 +179,12 @@ function toggleSidebar() { document.body.classList.toggle('sidebar-open'); }
 function closeSidebar() { document.body.classList.remove('sidebar-open'); }
 function closeSidebarIfMobile() { if (window.innerWidth <= 768) closeSidebar(); }
 
-// UPDATED: loadArticle now returns true/false
 async function loadArticle(identifier) {
     showLoading(true);
     disableEditMode();
     clearToC();
     clearGallery();
-    searchResultsContainer.classList.add('hidden'); // Hide search results if open
+    searchResultsContainer.classList.add('hidden');
     articleBody.classList.remove('hidden');
 
     try {
@@ -158,7 +196,7 @@ async function loadArticle(identifier) {
         } else if (identifier === "Welcome") {
             data = { 
                 id: "welcome-local", title: "Welcome to WikiLite", 
-                content: "<p>This is <b>WikiLite v0.0.2b02</b>. Try the new <b>Search Autocomplete</b>!</p>", 
+                content: "<p>This is <b>WikiLite v0.0.2b03</b>. Try using <b>Arrow Keys</b> in search!</p>", 
                 isLocal: true, sections: [], images: []
             };
             isLocalArticle = true;
@@ -184,17 +222,17 @@ async function loadArticle(identifier) {
         breadcrumb.textContent = isLocalArticle ? `Local / ${data.title}` : `Wikipedia / ${data.title}`;
         
         editBtn.classList.toggle('hidden', !isLocalArticle);
-        return true; // Success
+        return true;
 
     } catch (error) {
-        return false; // Failure
+        return false;
     } finally {
         showLoading(false);
         closeSidebarIfMobile();
     }
 }
 
-// UPDATED: handleSearch with fallback to results page
+// UPDATED: handleSearch with "Did You Mean"
 async function handleSearch() {
     const query = searchInput.value.trim();
     if (!query) return;
@@ -204,20 +242,23 @@ async function handleSearch() {
     try {
         const success = await loadArticle(query);
         if (!success) {
-            // Exact match failed, show search results
-            const results = await apiSearchArticles(query); /* Remember only apiSearchArticles works not apiSearchArticlesFull */
-            renderSearchResults(query, results);
+            // Exact match failed, try spell check
+            const suggestion = await apiGetSpellCheck(query);
+            
+            const results = await apiSearchArticlesFull(query);
+            renderSearchResults(query, results, suggestion);
         }
     } catch (error) {
         console.error(error);
     } finally {
         showLoading(false);
-        searchInput.value = '';
+        // Keep search term in input if no result, so user can edit it
+        // searchInput.value = ''; 
     }
 }
 
-// NEW: Render Search Results
-function renderSearchResults(query, results) {
+// UPDATED: Render Search Results with Suggestion
+function renderSearchResults(query, results, suggestion) {
     searchResultsContainer.classList.remove('hidden');
     articleBody.classList.add('hidden');
     imageGallery.classList.add('hidden');
@@ -228,8 +269,20 @@ function renderSearchResults(query, results) {
     editBtn.classList.add('hidden');
     
     searchResultsList.innerHTML = '';
-    if (results.length === 0) {
-        searchResultsList.innerHTML = '<li class="search-result-item">No results found.</li>';
+    
+    // Show "Did You Mean?" if available
+    if (suggestion) {
+        const liSuggest = document.createElement('li');
+        liSuggest.className = 'search-result-item';
+        liSuggest.style.backgroundColor = 'var(--hover-bg)';
+        liSuggest.innerHTML = `
+            <h3 class="result-title">Did you mean: <a href="#" onclick="loadArticle('${suggestion}'); return false;">${suggestion}</a>?</h3>
+        `;
+        searchResultsList.appendChild(liSuggest);
+    }
+
+    if (results.length === 0 && !suggestion) {
+        searchResultsList.innerHTML += '<li class="search-result-item">No results found.</li>';
         return;
     }
     
@@ -249,7 +302,7 @@ function renderSearchResults(query, results) {
     });
 }
 
-// Gallery, ToC, Sidebar, and Edit functions remain the same as v0.0.2b01...
+// Gallery, ToC, Sidebar, and Edit functions remain same as v0.0.2b02
 function renderGallery(images) {
     galleryGrid.innerHTML = '';
     imageGallery.classList.remove('hidden');

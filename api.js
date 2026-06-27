@@ -1,6 +1,6 @@
 /**
  * WikiLite Real Wikipedia API Connector
- * v0.0.2b02
+ * v0.0.2b03
  */
 
 const WIKI_API_URL = "https://en.wikipedia.org/w/api.php";
@@ -10,7 +10,6 @@ function stripHtmlTags(html) {
     return doc.body.textContent || "";
 }
 
-// NEW: Extract images from parsed HTML
 function extractImagesFromHtml(html) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
@@ -21,27 +20,21 @@ function extractImagesFromHtml(html) {
     imgs.forEach(img => {
         const width = parseInt(img.getAttribute('width') || '0');
         const height = parseInt(img.getAttribute('height') || '0');
-        
-        // Filter out small icons and flags
         if (width > 0 && width < 80) return;
         if (height > 0 && height < 80) return;
         
         let src = img.getAttribute('src');
         if (!src) return;
         if (src.startsWith('//')) src = 'https:' + src;
-        
-        // Avoid duplicates and icon URLs
         if (seenUrls.has(src) || src.includes('icon') || src.includes('logo')) return;
         seenUrls.add(src);
         
         const alt = img.getAttribute('alt') || 'Image';
         images.push({ url: src, title: alt });
     });
-    
     return images;
 }
 
-// NEW: Search Suggestions (Autocomplete)
 async function apiGetSearchSuggestions(query) {
     const params = new URLSearchParams({
         action: "opensearch",
@@ -51,12 +44,9 @@ async function apiGetSearchSuggestions(query) {
         format: "json",
         origin: "*"
     });
-
     try {
         const response = await fetch(`${WIKI_API_URL}?${params}`);
         const data = await response.json();
-        
-        // data format: [query, [titles], [descriptions], [urls]]
         if (data && data[1]) {
             return data[1].map((title, index) => ({
                 title: title,
@@ -69,7 +59,32 @@ async function apiGetSearchSuggestions(query) {
     }
 }
 
-// NEW: Full Search Results with Snippets
+// NEW: Spell Check / Did You Mean
+async function apiGetSpellCheck(query) {
+    const params = new URLSearchParams({
+        action: "opensearch",
+        search: query,
+        limit: 1,
+        namespace: 0,
+        format: "json",
+        origin: "*"
+    });
+    // Opensearch usually returns the best match first, which acts as a spell check
+    try {
+        const response = await fetch(`${WIKI_API_URL}?${params}`);
+        const data = await response.json();
+        if (data && data[1] && data[1].length > 0) {
+            // If the first result is different from query, it's a suggestion
+            if (data[1][0].toLowerCase() !== query.toLowerCase()) {
+                return data[1][0];
+            }
+        }
+        return null;
+    } catch (error) {
+        return null;
+    }
+}
+
 async function apiSearchArticlesFull(query) {
     const params = new URLSearchParams({
         action: "query",
@@ -79,11 +94,9 @@ async function apiSearchArticlesFull(query) {
         format: "json",
         origin: "*"
     });
-
     try {
         const response = await fetch(`${WIKI_API_URL}?${params}`);
         const data = await response.json();
-        
         if (data.query && data.query.search) {
             return data.query.search.map(item => ({
                 title: item.title,
@@ -107,11 +120,9 @@ async function apiGetFullArticleByTitle(title) {
         disableeditsection: "true",
         disabletoc: "true"
     });
-
     try {
         const response = await fetch(`${WIKI_API_URL}?${params}`);
         const data = await response.json();
-
         if (data.parse) {
             const htmlContent = data.parse.text["*"];
             return {
@@ -119,7 +130,7 @@ async function apiGetFullArticleByTitle(title) {
                 title: stripHtmlTags(data.parse.displaytitle),
                 content: htmlContent,
                 sections: data.parse.sections || [],
-                images: extractImagesFromHtml(htmlContent) // NEW: Extract images
+                images: extractImagesFromHtml(htmlContent)
             };
         } else {
             throw new Error("Page not found");
@@ -139,11 +150,9 @@ async function apiGetRandomArticle() {
         prop: "info",
         inprop: "url"
     });
-
     try {
         const response = await fetch(`${WIKI_API_URL}?${params}`);
         const data = await response.json();
-        
         if (data.query && data.query.pages) {
             const pageId = Object.keys(data.query.pages)[0];
             const page = data.query.pages[pageId];
@@ -155,7 +164,6 @@ async function apiGetRandomArticle() {
     }
 }
 
-// Local Database with LocalStorage Persistence
 function getLocalArticles() {
     const stored = localStorage.getItem('wikilite_local_articles');
     return stored ? JSON.parse(stored) : [];
@@ -169,13 +177,11 @@ async function apiCreateLocalArticle(id, title, content) {
     let articles = getLocalArticles();
     const existingIndex = articles.findIndex(a => a.id === id);
     const newArticle = { id, title, content, isLocal: true, images: [] };
-    
     if (existingIndex !== -1) {
         articles[existingIndex] = newArticle;
     } else {
         articles.push(newArticle);
     }
-    
     saveLocalArticles(articles);
     return newArticle;
 }
