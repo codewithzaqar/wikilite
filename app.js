@@ -15,6 +15,8 @@ const editorTextarea = document.getElementById('editorTextarea');
 const saveBtn = document.getElementById('saveBtn');
 const cancelBtn = document.getElementById('cancelBtn');
 const themeToggle = document.getElementById('themeToggle');
+const menuToggle = document.getElementById('menuToggle');
+const backdrop = document.getElementById('backdrop')
 
 // State
 let historyStack = []; 
@@ -36,16 +38,18 @@ document.addEventListener('DOMContentLoaded', () => {
     saveBtn.addEventListener('click', saveLocalArticle);
     themeToggle.addEventListener('click', toggleTheme);
 
+    // NEW: Mobile Menu Listeners
+    menuToggle.addEventListener('click', toggleSidebar);
+    backdrop.addEventListener('click', closeSidebar);
+
     // Intercept Internal Wikipedia Links
     articleBody.addEventListener('click', (e) => {
         if (e.target.tagName === 'A') {
             const href = e.target.getAttribute('href');
             if (href && href.startsWith('/wiki/')) {
-                e.preventDefault(); 
-                const wikiTitle = decodeURIComponent(href.replace('/wiki/', ''));
+                e.preventDefault();     const wikiTitle = decodeURIComponent(href.replace('/wiki/', ''));
                 loadArticle(wikiTitle);
             } else if (href && href.startsWith('#')) {
-                // Handle internal anchor jumps
                 e.preventDefault();
                 const targetId = href.substring(1);
                 const targetElement = document.getElementById(targetId);
@@ -56,6 +60,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// NEW: Sidebar Toggle Logic
+function toggleSidebar() {
+    document.body.classList.toggle('sidebar-open');
+}
+
+function closeSidebar() {
+    document.body.classList.remove('sidebar-open');
+}
+
+// Helper to close sidebar on mobile after navigation
+function closeSidebarIfMobile() {
+    if (window.innerHTML <= 768) {
+        closeSidebar();
+    }
+}
 
 // Theme Logic
 function initTheme() {
@@ -76,8 +96,7 @@ function applyTheme(theme) {
 }
 
 function updateThemeIcon(theme) {
-    if (themeToggle) themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
-}
+    if (themeToggle) themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';}
 
 async function loadArticle(identifier) {
     showLoading(true);
@@ -126,7 +145,6 @@ async function loadArticle(identifier) {
         } else {
             editBtn.classList.add('hidden');
         }
-
     } catch (error) {
         console.error(error);
         articleTitle.textContent = "Not Found";
@@ -134,10 +152,10 @@ async function loadArticle(identifier) {
         editBtn.classList.add('hidden');
     } finally {
         showLoading(false);
+        closeSidebarIfMobile()
     }
 }
 
-// NEW: Render Table of Contents
 function renderToC(sections) {
     tocList.innerHTML = '';
     
@@ -147,17 +165,12 @@ function renderToC(sections) {
     }
 
     tocHeader.classList.remove('hidden');
-    
-    // Filter out the main title (level 0) if present, usually we want h2/h3
     const relevantSections = sections.filter(s => s.level > 0);
 
     relevantSections.forEach(section => {
         const li = document.createElement('li');
         const a = document.createElement('a');
         a.textContent = section.line; // Section title
-        
-        // Wikipedia uses IDs like "section-1" or just the anchor name
-        // The API returns 'anchor' which matches the ID in the HTML
         const anchor = section.anchor;
         
         a.onclick = (e) => {
@@ -165,10 +178,10 @@ function renderToC(sections) {
             const target = document.getElementById(anchor);
             if (target) {
                 target.scrollIntoView({ behavior: 'smooth' });
+                closeSidebarIfMobile();
             }
         };
-        
-        // Indent based on level
+
         if (section.level > 1) {
             a.style.paddingLeft = (10 + (section.level * 5)) + 'px';
             a.style.fontSize = '0.8rem';
@@ -181,8 +194,7 @@ function renderToC(sections) {
 
 function clearToC() {
     tocList.innerHTML = '';
-    tocHeader.classList.add('hidden');
-}
+    tocHeader.classList.add('hidden');}
 
 function addToVisited(title, id) {
     visitedArticles = visitedArticles.filter(item => item.id !== id);
@@ -232,7 +244,6 @@ async function handleSearch() {
         searchInput.value = '';
     }
 }
-
 async function loadRandomArticle() {
     showLoading(true);
     try {
@@ -255,6 +266,7 @@ async function loadRandomArticle() {
         alert("Failed to load random article");
     } finally {
         showLoading(false);
+        closeSidebarIfMobile();
     }
 }
 
@@ -280,8 +292,7 @@ function startCreateLocal(title) {
 
 function enableEditMode(isNew = false) {
     if (!isLocalArticle) return; 
-    isEditMode = true;
-    articleBody.classList.add('hidden');
+    isEditMode = true;  articleBody.classList.add('hidden');
     editorContainer.classList.remove('hidden');
     editBtn.classList.add('hidden');
     clearToC(); // Hide ToC in edit mode

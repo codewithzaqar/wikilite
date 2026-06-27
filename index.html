@@ -11,6 +11,7 @@
     <!-- Header -->
     <header class="top-bar">
         <div style="display:flex; align-items:center;">
+            <button id="menuToggle" class="menu-toggle" title="Toggle Menu">☰</button>
             <button id="themeToggle" class="theme-toggle" title="Toggle Dark Mode">🌙</button>
             <div class="logo">Wiki<strong>Lite</strong> <span class="version">v0.0.2a</span></div>
         </div>
@@ -19,6 +20,9 @@
             <button onclick="handleSearch()">Go</button>
         </div>
     </header>
+
+    <!-- Backdrop for mobile sidebar -->
+    <div class="backdrop" id="backdrop"></div>
 
     <div class="container">
         <!-- Sidebar Navigation -->
